@@ -5,6 +5,7 @@ import pwnlib.log, pwnlib.term, logging
 
 import argparse
 import shelve, hashlib, os, tempfile
+from pickle import Pickler, Unpickler
 
 from bloodhound.ad.utils import ADUtils
 from bloodhound.ad.trusts import ADDomainTrust
@@ -23,12 +24,19 @@ class ADExplorerSnapshot(object):
         self.log = log
         self.snap = Snapshot(snapfile, log=log)
 
+        self.snap.parseHeader()
+
         if self.log:
             filetimeiso = datetime.datetime.fromtimestamp(self.snap.header.filetimeUnix).isoformat()
             self.log.info(f'Server: {self.snap.header.server}')
             self.log.info(f'Time of snapshot: {filetimeiso}')
             self.log.info('Mapping offset: 0x{:x}'.format(self.snap.header.mappingOffset))
             self.log.info(f'Object count: {self.snap.header.numObjects}')
+
+        self.snap.parseProperties()
+        self.snap.parseClasses()
+
+        self.snap.parseObjectOffsets()
 
         self.sidcache = {}
         self.dncache = CaseInsensitiveDict()
@@ -38,9 +46,17 @@ class ADExplorerSnapshot(object):
 
         cacheFileName = hashlib.md5(f"{self.snap.header.filetime}_{self.snap.header.server}".encode()).hexdigest() + ".pre.cache"
         cachePath = os.path.join(tempfile.gettempdir(), cacheFileName)
+        cacheFile = open(cachePath, "ab+")
 
-        dico = shelve.open(cachePath)
-        if dico.get("shelved", False):
+        dico = None
+        try:
+            dico = Unpickler(cacheFile).load()
+        except (OSError, IOError, EOFError) as e:
+            pass
+
+        if dico:
+            self.log.success("Restored pre-processed information from data cache")
+
             self.objecttype_guid_map = dico['guidmap']
             self.sidcache = dico['sidcache']
             self.dncache = dico['dncache']
@@ -48,13 +64,16 @@ class ADExplorerSnapshot(object):
             self.domains = dico['domains']
         else:
             self.preprocess()
+
+            dico = {}
             dico['guidmap'] = self.objecttype_guid_map
             dico['sidcache'] = self.sidcache
             dico['dncache'] = self.dncache
             dico['computersidcache'] = self.computersidcache
             dico['domains'] = self.domains
             dico['shelved'] = True
-            dico.close()
+
+            Pickler(cacheFile).dump(dico)
 
         self.numUsers = 0
         self.numGroups = 0
@@ -150,7 +169,8 @@ class ADExplorerSnapshot(object):
             self.writeQueues[ptype].put(None)
             self.writeQueues[ptype].join()
 
-        log.success("Output written to {self.snap.header.server}_{self.snap.header.filetimeUnix}_*.json files")
+        if self.log:
+            self.log.success(f"Output written to {self.snap.header.server}_{self.snap.header.filetimeUnix}_*.json files")
 
     def processComputers(self, entry):
         if not entry.attributes.get('sAMAccountType', -1) == 805306369 or (entry.attributes.get('userAccountControl', 0) & 0x02 == 0x02):
