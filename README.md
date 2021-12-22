@@ -31,3 +31,19 @@ optional arguments:
   -h, --help  show this help message and exit
   -v          Enable verbose output
 ```
+
+## Notes
+
+ADExplorerSnapshot.py will create caches of information for quicker lookups while processing the data. Especially when processing larger snapshots (e.g. 4GB+) you will also need to have sufficient RAM available. In my tests, about half of the snapshot file size was required in RAM.
+
+While the library was tested with a number of data sets, please create an issue report if you run into problems. 
+
+The ADExplorer snapshot parser is implemented as its own module, which could be also used individually.
+
+## License and credits
+
+This code is licensed under the [MIT license](https://opensource.org/licenses/MIT).
+
+ADExplorerSnapshot.py relies on the following projects:
+ - [BloodHound.py](https://github.com/fox-it/BloodHound.py) (the Python BloodHound ingestor); for processing LDAP data.
+ - [dissect.cstruct](https://github.com/fox-it/dissect.cstruct) (C-style binary struct parser): for parsing the binary snapshot data.
