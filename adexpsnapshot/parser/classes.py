@@ -138,12 +138,12 @@ class AttributeDict(UserDict):
 
             for v in range(numValues):
                 octetStr = structure.char[lengths[v]](self.fh)
-                if raw or attrName == 'sidhistory':
+                if raw or attrName in ['sidhistory', 'securityidentifier']: # some stuff is hacked in here for bloodhound lib compat, may need to move that somewhere else
                     values.append(octetStr)
                 else:
                     if len(octetStr) == 16 and attrName.endswith("guid"):
                         val = uuid.UUID(bytes_le=octetStr)
-                    elif attrName == 'objectsid':
+                    elif attrName in ['objectsid']:
                         val = str(LdapSid(BytesIO(octetStr)))
                     else:
                         val = octetStr.hex()

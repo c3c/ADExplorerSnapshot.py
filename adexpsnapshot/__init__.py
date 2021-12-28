@@ -46,7 +46,7 @@ class ADExplorerSnapshot(object):
         self.domaincontrollers = []
         self.rootdomain = None
 
-        cacheFileName = hashlib.md5(f"{self.snap.header.filetime}_{self.snap.header.server}".encode()).hexdigest() + ".pre.cache"
+        cacheFileName = hashlib.md5(f"{self.snap.header.filetime}_{self.snap.header.server}".encode()).hexdigest() + ".cache"
         cachePath = os.path.join(tempfile.gettempdir(), cacheFileName)
 
         dico = None
@@ -56,7 +56,8 @@ class ADExplorerSnapshot(object):
             pass
 
         if dico and dico.get('shelved', False):
-            self.log.success("Restored pre-processed information from data cache")
+            if self.log:
+                self.log.success("Restored pre-processed information from data cache")
 
             self.objecttype_guid_map = dico['guidmap']
             self.sidcache = dico['sidcache']
@@ -267,7 +268,7 @@ class ADExplorerSnapshot(object):
 
 
     def processTrusts(self, entry):
-        if 'trustdomain' not in entry.classes:
+        if 'trusteddomain' not in entry.classes:
             return
 
         domtrust = ADDomainTrust(ADUtils.get_entry_property(entry, 'name'), ADUtils.get_entry_property(entry, 'trustDirection'), ADUtils.get_entry_property(entry, 'trustType'), 
