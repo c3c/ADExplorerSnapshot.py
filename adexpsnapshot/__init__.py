@@ -512,7 +512,7 @@ class ADExplorerSnapshot(object):
         evgroup = {
             "ObjectIdentifier": "%s-S-1-1-0" % domainname,
             "Properties": {
-                "domain": self.rootdomain,
+                "domain": domainname,
                 "name": "EVERYONE@%s" % domainname,
             },
             "Members": [
