@@ -11,7 +11,7 @@ AD Explorer allows you to connect to a DC and browse LDAP data. It can also crea
 
 ## Limitations
 
-The ingestor only supports offline information collection from the Snapshot file and won't interact with systems on the network. That means features like session and localadmin collection are not available. GPO/OU collection is missing. The ingestor processes all data it possibly can from the snapshot (including ACLs). You will only have the data available of the LDAP/DC that you ran the snapshot against.
+The ingestor only supports offline information collection from the snapshot file and won't interact with systems on the network. That means features like session and localadmin collection are not available. GPO/OU collection is missing. The ingestor processes all data it possibly can from the snapshot (including ACLs). You will only have the data available of the LDAP/DC that you ran the snapshot against.
 
 ## Installation
 
@@ -24,7 +24,7 @@ pip3 install --user .
 ## Usage
 
 ```
-usage: ADExplorerSnapshot.py [-h] [-v] snapshot
+usage: ADExplorerSnapshot.py [-h] snapshot
 
 ADExplorer snapshot ingestor for BloodHound
 
@@ -33,7 +33,6 @@ positional arguments:
 
 optional arguments:
   -h, --help  show this help message and exit
-  -v          Enable verbose output
 ```
 
 ![ADExplorerSnapshot.py](adexpsnapshotpy.png)
