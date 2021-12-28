@@ -46,12 +46,13 @@ class ADExplorerSnapshot(object):
 
         cacheFileName = hashlib.md5(f"{self.snap.header.filetime}_{self.snap.header.server}".encode()).hexdigest() + ".pre.cache"
         cachePath = os.path.join(tempfile.gettempdir(), cacheFileName)
-        cacheFile = open(cachePath, "ab+")
 
         dico = None
         try:
-            dico = Unpickler(cacheFile).load()
+            dico = Unpickler(open(cachePath, "rb")).load()
         except (OSError, IOError, EOFError) as e:
+            print(e)
+            print(cachePath)
             pass
 
         if dico:
@@ -73,7 +74,7 @@ class ADExplorerSnapshot(object):
             dico['domains'] = self.domains
             dico['shelved'] = True
 
-            Pickler(cacheFile).dump(dico)
+            Pickler(open(cachePath, "wb")).dump(dico)
 
         self.numUsers = 0
         self.numGroups = 0
@@ -84,26 +85,23 @@ class ADExplorerSnapshot(object):
 
         self.process()
 
-    RESOLVE_ENTRY_ATTRIBUTES = ['sAMAccountName', 'distinguishedName', 'objectSid', 'sAMAccountType', 'msDS-GroupMSAMembership']
-
     # build caches: guidmap, domains, forest_domains, computers
     def preprocess(self):
         for k,cl in self.snap.classes.items():
             self.objecttype_guid_map[k] = str(cl.schemaIDGUID)
 
         if self.log:
-            prog = self.log.progress("Preprocessing objects")
+            prog = self.log.progress("Preprocessing objects", rate=0.1)
 
         for idx,obj in enumerate(self.snap.objects):
-            obj.processAttributes(['objectClass', 'objectSid', 'distinguishedName', 'systemFlags', 'nCName', 'sAMAccountType', 'userAccountControl', 'dNSHostname'])
 
             # create sid cache
-            objectSid = obj.attributes.get('objectSid', None)
+            objectSid = ADUtils.get_entry_property(obj, 'objectSid')
             if objectSid:
                 self.sidcache[objectSid] = idx
 
             # create dn cache
-            distinguishedName = obj.attributes.get('distinguishedName', None)
+            distinguishedName = ADUtils.get_entry_property(obj, 'distinguishedName')
             if distinguishedName:
                 self.dncache[distinguishedName] = idx
 
@@ -113,14 +111,14 @@ class ADExplorerSnapshot(object):
 
             # get forest domains
             if 'crossref' in obj.classes:
-                if obj.attributes.get('systemFlags', 0) & 2 == 2:
-                    ncname = obj.attributes.get('nCName', None)
+                if ADUtils.get_entry_property(obj, 'systemFlags', 0) & 2 == 2:
+                    ncname = ADUtils.get_entry_property(obj, 'nCName')
                     if ncname and ncname not in self.domains:
                         self.domains[ncname] = idx
 
             # get computers
-            if obj.attributes.get('sAMAccountType', -1) == 805306369 and not (obj.attributes.get('userAccountControl', 0) & 0x02 == 0x02):
-                dnshostname = obj.attributes.get('dNSHostname', None)
+            if ADUtils.get_entry_property(obj, 'sAMAccountType', -1) == 805306369 and not (ADUtils.get_entry_property(obj, 'userAccountControl', 0) & 0x02 == 0x02):
+                dnshostname = ADUtils.get_entry_property(obj, 'dNSHostname')
                 if dnshostname:
                     self.computersidcache[dnshostname] = objectSid
 
@@ -128,9 +126,7 @@ class ADExplorerSnapshot(object):
                 prog.status(f"{idx+1}/{self.snap.header.numObjects} ({len(self.sidcache)} sids, {len(self.domains)} domains, {len(self.computersidcache)} computers)")
 
         if self.log:
-            prog.success()
-            self.log.success(f"Preprocessing objects: {len(self.sidcache)} sids, {len(self.domains)} domains, {len(self.computersidcache)} computers")
-
+            prog.success(f"Preprocessing objects: {len(self.sidcache)} sids, {len(self.domains)} domains, {len(self.computersidcache)} computers")
 
     def process(self):
         processors = [
@@ -141,7 +137,7 @@ class ADExplorerSnapshot(object):
         ]
 
         if self.log:
-            prog = self.log.progress("Collecting data")
+            prog = self.log.progress("Collecting data", rate=0.1)
 
         for ptype,fun in processors:
             self.writeQueues[ptype] = queue.Queue()
@@ -150,10 +146,6 @@ class ADExplorerSnapshot(object):
             results_worker.start()
 
         for idx,obj in enumerate(self.snap.objects):
-            obj.processAttributes(['objectCategory', 'objectClass', # users, groups, trusts
-                                    'sAMAccountType', 'userAccountControl' # computers
-                                    ])
-          
             for ptype,fun in processors:
                 ret = fun(obj)
                 if ret:
@@ -173,32 +165,26 @@ class ADExplorerSnapshot(object):
             self.log.success(f"Output written to {self.snap.header.server}_{self.snap.header.filetimeUnix}_*.json files")
 
     def processComputers(self, entry):
-        if not entry.attributes.get('sAMAccountType', -1) == 805306369 or (entry.attributes.get('userAccountControl', 0) & 0x02 == 0x02):
+        if not ADUtils.get_entry_property(entry, 'sAMAccountType', -1) == 805306369 or (ADUtils.get_entry_property(entry, 'userAccountControl', 0) & 0x02 == 0x02):
             return
 
-        entry.processAttributes(['samaccountname', 'userAccountControl', 'distinguishedname',
-                                'dnshostname', 'samaccounttype', 'objectSid', 'primaryGroupID',
-                                'servicePrincipalName', 'msDS-AllowedToDelegateTo', 'lastLogon', 'lastLogonTimestamp', 
-                                'pwdLastSet', 'operatingSystem', 'description', 'operatingSystemServicePack',
-                                'msDS-AllowedToActOnBehalfOfOtherIdentity', 'ms-mcs-admpwdexpirationtime', 'nTSecurityDescriptor'])
-
-        hostname = entry.attributes.get('dNSHostName')
+        hostname = ADUtils.get_entry_property(entry, 'dNSHostName')
         if not hostname:
             return
 
         distinguishedName = ADUtils.get_entry_property(entry, 'distinguishedName')
         domain = ADUtils.ldap2domain(distinguishedName)
 
-        samname = entry.attributes.get('sAMAccountName')
+        samname = ADUtils.get_entry_property(entry, 'sAMAccountName')
         primarygroup = MembershipEnumerator.get_primary_membership(entry)
 
         computer = {
-            'ObjectIdentifier': entry.attributes.get('objectsid'),
+            'ObjectIdentifier': ADUtils.get_entry_property(entry, 'objectsid'),
             'AllowedToAct': [],
             'PrimaryGroupSid': primarygroup,
             'Properties': {
                 'name': hostname.upper(),
-                'objectid': entry.attributes.get('objectsid'),
+                'objectid': ADUtils.get_entry_property(entry, 'objectsid'),
                 'domain': domain.upper(),
                 'highvalue': False,
                 'distinguishedname': distinguishedName
@@ -269,7 +255,6 @@ class ADExplorerSnapshot(object):
         if 'trustdomain' not in entry.classes:
             return
 
-        entry.processAttributes(['flatName', 'name', 'securityIdentifier', 'trustAttributes', 'trustDirection', 'trustType'])
         domtrust = ADDomainTrust(ADUtils.get_entry_property(entry, 'name'), ADUtils.get_entry_property(entry, 'trustDirection'), ADUtils.get_entry_property(entry, 'trustType'), 
                                 ADUtils.get_entry_property(entry, 'trustAttributes'), ADUtils.get_entry_property(entry, 'securityIdentifier'))
         
@@ -282,8 +267,6 @@ class ADExplorerSnapshot(object):
         if not 'group' in entry.classes:
             return
 
-        entry.processAttributes(['samaccountname', 'distinguishedname', 'samaccounttype', 'objectsid', 'member', 'adminCount', 'description', 'nTSecurityDescriptor'])
-
         highvalue = ["S-1-5-32-544", "S-1-5-32-550", "S-1-5-32-549", "S-1-5-32-551", "S-1-5-32-548"]
 
         def is_highvalue(sid):
@@ -293,18 +276,11 @@ class ADExplorerSnapshot(object):
                 return True
             return False
 
-        distinguishedName = entry.attributes.get('distinguishedName', None)
-        assert distinguishedName
-
+        distinguishedName = ADUtils.get_entry_property(entry, 'distinguishedName')
         resolved_entry = ADUtils.resolve_ad_entry(entry)
         domain = ADUtils.ldap2domain(distinguishedName)
 
-        try:
-            sid = entry['attributes']['objectSid']
-        except KeyError:
-            #Somehow we found a group without a sid?
-            self.log.warn('Could not determine SID for group %s', entry['attributes']['distinguishedName'])
-            return
+        sid = ADUtils.get_entry_property(entry, "objectSid")
 
         group = {
             "ObjectIdentifier": sid,
@@ -325,7 +301,7 @@ class ADExplorerSnapshot(object):
         group['Properties']['admincount'] = ADUtils.get_entry_property(entry, 'adminCount', default=0) == 1
         group['Properties']['description'] = ADUtils.get_entry_property(entry, 'description')
 
-        for member in entry.attributes.get('member', []):
+        for member in ADUtils.get_entry_property(entry, 'member', []):
             resolved_member = self.get_membership(member)
             if resolved_member:
                 group['Members'].append(resolved_member)
@@ -341,13 +317,7 @@ class ADExplorerSnapshot(object):
         if not (('user' in entry.classes and 'person' == entry.category) or 'msds-groupmanagedserviceaccount' in entry.classes):
             return
 
-        entry.processAttributes(['sAMAccountName', 'distinguishedName', 'sAMAccountType',
-                                'objectSid', 'primaryGroupID', 'ms-DS-GroupMSAMembership', 'servicePrincipalName', 'userAccountControl', 'displayName',
-                                'lastLogon', 'lastLogonTimestamp', 'pwdLastSet', 'mail', 'title', 'homeDirectory',
-                                'description', 'userPassword', 'adminCount', 'msDS-AllowedToDelegateTo', 'sIDHistory', 'nTSecurityDescriptor'])
-
-        distinguishedName = entry.attributes.get('distinguishedName', None)
-        assert distinguishedName
+        distinguishedName = ADUtils.get_entry_property(entry, 'distinguishedName')
 
         resolved_entry = ADUtils.resolve_ad_entry(entry)
         if resolved_entry['type'] == 'trustaccount':
@@ -399,7 +369,7 @@ class ADExplorerSnapshot(object):
         if ADUtils.get_entry_property(entry, 'msDS-GroupMSAMembership', default=b'', raw=True) != b'':
             aces = self.parse_acl(user, 'user', ADUtils.get_entry_property(entry, 'msDS-GroupMSAMembership', raw=True))
             processed_aces = self.resolve_aces(aces, domain)
-            print('hello!')
+
             for ace in processed_aces:
                 if ace['RightName'] == 'Owner':
                     continue
@@ -430,7 +400,6 @@ class ADExplorerSnapshot(object):
             else:
                 try:
                     entry = self.snap.getObject(self.sidcache[ace['sid']])
-                    entry.processAttributes(ADExplorerSnapshot.RESOLVE_ENTRY_ATTRIBUTES)
                 except KeyError:
                     entry = {
                         'type': 'Unknown',
@@ -471,7 +440,6 @@ class ADExplorerSnapshot(object):
         else:
             try:
                 entry = self.snap.getObject(self.sidcache[sid])
-                entry.processAttributes(ADExplorerSnapshot.RESOLVE_ENTRY_ATTRIBUTES)
             except KeyError:
                 entry = {
                     'type': 'Unknown',
@@ -487,7 +455,6 @@ class ADExplorerSnapshot(object):
     def get_membership(self, member):
         try:
             entry = self.snap.getObject(self.dncache[member])
-            entry.processAttributes(ADExplorerSnapshot.RESOLVE_ENTRY_ATTRIBUTES)
         except KeyError:
             return None
 
