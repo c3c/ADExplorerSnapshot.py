@@ -553,7 +553,7 @@ class ADExplorerSnapshot(object):
 
 def main():
 
-    parser = argparse.ArgumentParser(add_help=True, description='ADExplorer snapshot ingestor for BloodHound', formatter_class=argparse.RawDescriptionHelpFormatter)
+    parser = argparse.ArgumentParser(add_help=True, description='AD Explorer snapshot ingestor for BloodHound', formatter_class=argparse.RawDescriptionHelpFormatter)
 
     parser.add_argument('snapshot')
 
