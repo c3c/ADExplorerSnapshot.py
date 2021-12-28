@@ -45,7 +45,9 @@ ADExplorerSnapshot.py will create caches of information for quicker lookups whil
 
 The library was tested with a number of data sets, please create an issue report if you run into problems. 
 
-The ADExplorer snapshot parser is implemented as its own module, which could also be used individually.
+The AD Explorer snapshot parser is implemented as its own module, which could also be used individually.
+
+The format in which snapshots are stored by AD Explorer is proprietary and led to a fun reverse engineering journey. A 010 editor template is included in this repository, which I used for iteratively mapping out the contents of the snapshot into structs.
 
 ## License and credits
 
