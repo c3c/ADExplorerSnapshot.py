@@ -86,6 +86,7 @@ class ADExplorerSnapshot(object):
         self.numComputers = 0
         self.numTrusts = 0
 
+        self.trusts = []
         self.writeQueues = {}
 
         self.process()
@@ -143,24 +144,17 @@ class ADExplorerSnapshot(object):
             prog.success(f"{len(self.sidcache)} sids, {len(self.computersidcache)} computers, {len(self.domains)} domains with {len(self.domaincontrollers)} DCs")
 
     def process(self):
-        processors = [
-            ["users", self.processUsers],
-            ["computers", self.processComputers],
-            ["groups", self.processGroups],
-            ["trusts", self.processTrusts]
-        ]
-
         if self.log:
             prog = self.log.progress("Collecting data", rate=0.1)
 
-        for ptype,fun in processors:
+        for ptype in ['users', 'computers', 'groups', 'domains']:
             self.writeQueues[ptype] = queue.Queue()
             results_worker = threading.Thread(target=OutputWorker.membership_write_worker, args=(self.writeQueues[ptype], ptype, f"{self.snap.header.server}_{self.snap.header.filetimeUnix}_{ptype}.json"))
             results_worker.daemon = True
             results_worker.start()
 
         for idx,obj in enumerate(self.snap.objects):
-            for ptype,fun in processors:
+            for fun in [self.processUsers, self.processComputers, self.processGroups, self.processTrusts]:
                 ret = fun(obj)
                 if ret:
                     break
@@ -172,13 +166,50 @@ class ADExplorerSnapshot(object):
             prog.success(f"{self.numUsers} users, {self.numGroups} groups, {self.numComputers} computers, {self.numTrusts} trusts")
 
         self.write_default_groups()
+        self.processDomains()
 
-        for ptype,fun in processors:
+        for ptype in ['users', 'computers', 'groups', 'domains']:
             self.writeQueues[ptype].put(None)
             self.writeQueues[ptype].join()
 
         if self.log:
             self.log.success(f"Output written to {self.snap.header.server}_{self.snap.header.filetimeUnix}_*.json files")
+
+    def processDomains(self):
+        domainname = ADUtils.ldap2domain(self.rootdomain)
+        domain_object = self.snap.getObject(self.dncache[self.rootdomain])
+
+        level_id = ADUtils.get_entry_property(domain_object, 'msds-behavior-version')
+        try:
+            functional_level = ADUtils.FUNCTIONAL_LEVELS[int(level_id)]
+        except KeyError:
+            functional_level = 'Unknown'
+
+        domain = {
+            "ObjectIdentifier": ADUtils.get_entry_property(domain_object, 'objectSid'),
+            "Properties": {
+                "name": domainname.upper(),
+                "domain": domainname.upper(),
+                "highvalue": True,
+                "objectid": ADUtils.get_entry_property(domain_object, 'objectSid'),
+                "distinguishedname": ADUtils.get_entry_property(domain_object, 'distinguishedName'),
+                "description": ADUtils.get_entry_property(domain_object, 'description'),
+                "functionallevel": functional_level
+            },
+            "Trusts": [],
+            "Aces": [],
+            # The below is all for GPO collection, unsupported as of now.
+            "Links": [],
+            "Users": [],
+            "Computers": [],
+            "ChildOus": []
+        }
+
+        aces = self.parse_acl(domain, 'domain', ADUtils.get_entry_property(domain_object, 'nTSecurityDescriptor', raw=True))
+        domain['Aces'] = self.resolve_aces(aces, domainname)
+        domain['Trusts'].append(self.trusts)
+
+        self.writeQueues["domains"].put(domain)
 
     def processComputers(self, entry):
         if not ADUtils.get_entry_property(entry, 'sAMAccountType', -1) == 805306369 or (ADUtils.get_entry_property(entry, 'userAccountControl', 0) & 0x02 == 0x02):
@@ -276,7 +307,7 @@ class ADExplorerSnapshot(object):
         
         trust = domtrust.to_output()
         self.numTrusts += 1
-        self.writeQueues["trusts"].put(trust)
+        self.trusts.append(trust)
         return True
 
     def processGroups(self, entry):
