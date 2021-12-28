@@ -151,7 +151,7 @@ class AttributeDict(UserDict):
                     values.append(val)
 
         elif attrType == ADSTYPE_BOOLEAN:
-            assert numValues == 1, ["Multiple boolean values, verify data size", self.fileOffset, attrName, self.attributes]
+            assert numValues == 1, ["Multiple boolean values, verify data size", self.fileOffset, attrName]
 
             for v in range(numValues):
                 val = bool(structure.uint32(self.fh)) # not sure if uint32 is correct type here, check against more data sets
@@ -174,7 +174,7 @@ class AttributeDict(UserDict):
         elif attrType == ADSTYPE_UTC_TIME:
 
             for v in range(numValues):
-                val = SystemTime(self)
+                val = SystemTime(self.snap)
                 if raw:
                     values.append(val)
                 else:
@@ -188,7 +188,8 @@ class AttributeDict(UserDict):
                 values.append(descriptorBytes)
 
         else:
-            self.log.warn("Unhandled adsType: %s -> %d" % (attrName, prop.adsType))
+            if self.log:
+                self.log.warn("Unhandled adsType: %s -> %d" % (attrName, attrType))
 
         return values
 

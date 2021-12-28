@@ -43,6 +43,8 @@ class ADExplorerSnapshot(object):
         self.computersidcache = CaseInsensitiveDict()
         self.domains = CaseInsensitiveDict()
         self.objecttype_guid_map = CaseInsensitiveDict()
+        self.domaincontrollers = []
+        self.rootdomain = None
 
         cacheFileName = hashlib.md5(f"{self.snap.header.filetime}_{self.snap.header.server}".encode()).hexdigest() + ".pre.cache"
         cachePath = os.path.join(tempfile.gettempdir(), cacheFileName)
@@ -51,11 +53,9 @@ class ADExplorerSnapshot(object):
         try:
             dico = Unpickler(open(cachePath, "rb")).load()
         except (OSError, IOError, EOFError) as e:
-            print(e)
-            print(cachePath)
             pass
 
-        if dico:
+        if dico and dico.get('shelved', False):
             self.log.success("Restored pre-processed information from data cache")
 
             self.objecttype_guid_map = dico['guidmap']
@@ -63,6 +63,8 @@ class ADExplorerSnapshot(object):
             self.dncache = dico['dncache']
             self.computersidcache = dico['computersidcache']
             self.domains = dico['domains']
+            self.domaincontrollers = dico['domaincontrollers']
+            self.rootdomain = dico['rootdomain']
         else:
             self.preprocess()
 
@@ -72,6 +74,8 @@ class ADExplorerSnapshot(object):
             dico['dncache'] = self.dncache
             dico['computersidcache'] = self.computersidcache
             dico['domains'] = self.domains
+            dico['domaincontrollers'] = self.domaincontrollers
+            dico['rootdomain'] = self.rootdomain
             dico['shelved'] = True
 
             Pickler(open(cachePath, "wb")).dump(dico)
@@ -107,7 +111,12 @@ class ADExplorerSnapshot(object):
 
             # get domains
             if 'domain' in obj.classes:
-                self.domains[distinguishedName] = idx
+                if self.rootdomain is not None: # is it possible to find multiple?
+                    if self.log:
+                        self.log.warn("Multiple domains in snapshot(?)")
+                else:
+                    self.rootdomain = distinguishedName
+                    self.domains[distinguishedName] = idx
 
             # get forest domains
             if 'crossref' in obj.classes:
@@ -122,11 +131,15 @@ class ADExplorerSnapshot(object):
                 if dnshostname:
                     self.computersidcache[dnshostname] = objectSid
 
+            # get dcs
+            if ADUtils.get_entry_property(obj, 'userAccountControl', 0) & 0x2000 == 0x2000:
+                self.domaincontrollers.append(idx)
+
             if self.log and self.log.term_mode:
-                prog.status(f"{idx+1}/{self.snap.header.numObjects} ({len(self.sidcache)} sids, {len(self.domains)} domains, {len(self.computersidcache)} computers)")
+                prog.status(f"{idx+1}/{self.snap.header.numObjects} ({len(self.sidcache)} sids, {len(self.computersidcache)} computers, {len(self.domains)} domains with {len(self.domaincontrollers)} DCs)")
 
         if self.log:
-            prog.success(f"Preprocessing objects: {len(self.sidcache)} sids, {len(self.domains)} domains, {len(self.computersidcache)} computers")
+            prog.success(f"{len(self.sidcache)} sids, {len(self.computersidcache)} computers, {len(self.domains)} domains with {len(self.domaincontrollers)} DCs")
 
     def process(self):
         processors = [
@@ -156,6 +169,8 @@ class ADExplorerSnapshot(object):
 
         if self.log:
             prog.success(f"{self.numUsers} users, {self.numGroups} groups, {self.numComputers} computers, {self.numTrusts} trusts")
+
+        self.write_default_groups()
 
         for ptype,fun in processors:
             self.writeQueues[ptype].put(None)
@@ -464,29 +479,93 @@ class ADExplorerSnapshot(object):
             "MemberType": resolved_entry['type'].capitalize()
         }
 
+
+    def write_default_groups(self):
+        domainname = ADUtils.ldap2domain(self.rootdomain).upper()
+
+        group = {
+            "ObjectIdentifier": "%s-S-1-5-9" % domainname,
+            "Properties": {
+                "domain": domainname,
+                "name": "ENTERPRISE DOMAIN CONTROLLERS@%s" % domainname,
+            },
+            "Members": [],
+            "Aces": []
+        }
+
+        for dc in self.domaincontrollers:
+            entry = self.snap.getObject(dc)
+            resolved_entry = ADUtils.resolve_ad_entry(entry)
+            memberdata = {
+                "MemberId": resolved_entry['objectid'],
+                "MemberType": resolved_entry['type'].capitalize()
+            }
+            group["Members"].append(memberdata)
+
+        self.writeQueues["groups"].put(group)
+
+        domain_object = self.snap.getObject(self.dncache[self.rootdomain])
+        domainsid =  ADUtils.get_entry_property(domain_object, 'objectSid')
+
+        # Everyone
+        evgroup = {
+            "ObjectIdentifier": "%s-S-1-1-0" % domainname,
+            "Properties": {
+                "domain": self.rootdomain,
+                "name": "EVERYONE@%s" % domainname,
+            },
+            "Members": [
+                {
+                    "MemberId": "%s-515" % domainsid,
+                    "MemberType": "Group"
+                },
+                {
+                    "MemberId": "%s-513" % domainsid,
+                    "MemberType": "Group"
+                }
+            ],
+            "Aces": []
+        }
+        self.writeQueues["groups"].put(evgroup)
+
+        # Authenticated users
+        augroup = {
+            "ObjectIdentifier": "%s-S-1-5-11" % domainname,
+            "Properties": {
+                "domain": domainname,
+                "name": "AUTHENTICATED USERS@%s" % domainname,
+            },
+            "Members": [
+                {
+                    "MemberId": "%s-515" % domainsid,
+                    "MemberType": "Group"
+                },
+                {
+                    "MemberId": "%s-513" % domainsid,
+                    "MemberType": "Group"
+                }
+            ],
+            "Aces": []
+        }
+        self.writeQueues["groups"].put(augroup)
+
+
 def main():
 
     parser = argparse.ArgumentParser(add_help=True, description='ADExplorer snapshot ingestor for BloodHound', formatter_class=argparse.RawDescriptionHelpFormatter)
 
     parser.add_argument('snapshot')
 
-    parser.add_argument('-v', action='store_true', help='Enable verbose output')
-
     args = parser.parse_args()
 
     # add basic config for logging module to use pwnlib logging also in bloodhound libs
     logging.basicConfig(handlers=[pwnlib.log.console])
     log = pwnlib.log.getLogger(__name__)
+    log.setLevel(20)
 
     if pwnlib.term.can_init():
         pwnlib.term.init()
     log.term_mode = pwnlib.term.term_mode
-
-    if args.v:
-        log.verbose = True
-        log.setLevel(10)
-    else:
-        log.setLevel(20)
 
     fh = open(args.snapshot, "rb")
     ADExplorerSnapshot(fh, log)

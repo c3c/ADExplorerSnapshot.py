@@ -7,7 +7,7 @@ ADExplorerSnapshot.py is an AD Explorer snapshot ingestor for [BloodHound](https
 
 AD Explorer allows you to connect to a DC and browse LDAP data. It can also create snapshots of the server you are currently attached to. This tool allows you to the convert those snapshots to BloodHound-compatible JSON files.
 
-![ADExplorer](adexplorer.png)
+![ADExplorer](meta/adexplorer.png)
 
 ## Limitations
 
@@ -35,7 +35,7 @@ optional arguments:
   -h, --help  show this help message and exit
 ```
 
-![ADExplorerSnapshot.py](adexpsnapshotpy.png)
+![ADExplorerSnapshot.py](meta/adexpsnapshotpy.png)
 
 ## Notes
 
