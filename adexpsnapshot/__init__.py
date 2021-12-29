@@ -207,7 +207,7 @@ class ADExplorerSnapshot(object):
 
         aces = self.parse_acl(domain, 'domain', ADUtils.get_entry_property(domain_object, 'nTSecurityDescriptor', raw=True))
         domain['Aces'] = self.resolve_aces(aces, domainname)
-        domain['Trusts'].append(self.trusts)
+        domain['Trusts'] = self.trusts
 
         self.writeQueues["domains"].put(domain)
 
