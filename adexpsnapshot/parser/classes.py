@@ -211,9 +211,10 @@ class Object(WrapStruct):
 
     def getObjectCategory(self):
         catDN = self.attributes.get('objectCategory', None)
-        if catDN is not None:
-            catDN = catDN[0]
+        if catDN is None:
+            return None
 
+        catDN = catDN[0]
         catObj = self.snap.classes.get(catDN, None)
         if catObj:
             return catObj.className.lower()
