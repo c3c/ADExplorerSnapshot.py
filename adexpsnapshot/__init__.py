@@ -461,8 +461,8 @@ class ADExplorerSnapshot(object):
 
     # CacheInfo(hits=633024, misses=19340, maxsize=4096, currsize=4096)
     @functools.lru_cache(maxsize=4096)
-    def _parse_acl_cached(self, haslaps, entrytype, acl):
-        fake_entry = {"Properties":{"haslaps":haslaps}}
+    def _parse_acl_cached(self, parselaps, entrytype, acl): 
+        fake_entry = {"Properties":{"haslaps": True if parselaps else False}} 
         _, aces = parse_binary_acl(fake_entry, entrytype, acl, self.objecttype_guid_map)
 
         # freeze result so we can cache it for resolve_aces function
@@ -471,8 +471,8 @@ class ADExplorerSnapshot(object):
         return frozenset(aces)
 
     def parse_acl(self, entry, entrytype, acl):
-        haslaps = entrytype == 'computer' and entry['Properties']['haslaps']
-        aces = self._parse_acl_cached(haslaps, entrytype, acl)
+        parselaps = entrytype == 'computer' and entry['Properties']['haslaps'] and "ms-mcs-admpwd" in self.objecttype_guid_map
+        aces = self._parse_acl_cached(parselaps, entrytype, acl)
         self.cacheInfo = self._parse_acl_cached.cache_info()
         return aces
 
