@@ -34,7 +34,8 @@ positional arguments:
 optional arguments:
   -h, --help            show this help message and exit
   -o OUTPUT, --output OUTPUT
-                        Path to the *.json output folder. Folder must pre-exist.
+                        Path to the *.json output folder. Folder will be created if
+                        it doesn't exist. Defaults to the current directory.
 ```
 
 ![ADExplorerSnapshot.py](meta/adexpsnapshotpy.png)

@@ -587,7 +587,7 @@ def main():
     parser = argparse.ArgumentParser(add_help=True, description='AD Explorer snapshot ingestor for BloodHound', formatter_class=argparse.RawDescriptionHelpFormatter)
 
     parser.add_argument('snapshot', type=argparse.FileType('rb'), help="Path to the snapshot .dat file.")
-    parser.add_argument('-o', '--output', required=False, type=pathlib.Path, help="Path to the *.json output folder. Folder must pre-exist.", default=".")
+    parser.add_argument('-o', '--output', required=False, type=pathlib.Path, help="Path to the *.json output folder. Folder will be created if it doesn't exist. Defaults to the current directory.", default=".")
 
     args = parser.parse_args()
 
@@ -599,9 +599,16 @@ def main():
     if pwnlib.term.can_init():
         pwnlib.term.init()
     log.term_mode = pwnlib.term.term_mode
-    
+
     if not os.path.exists(args.output):
-        log.warn(f"Path {args.output} does not exist.")
+        try:
+            os.mkdir(args.output)
+        except:
+            log.error(f"Unable to create output directory '{args.output}'.")
+            return
+    
+    if not os.path.isdir(args.output):
+        log.warn(f"Path '{args.output}' does not exist or is not a folder.")
         parser.print_help()
         return
     
