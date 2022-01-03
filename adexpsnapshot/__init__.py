@@ -4,7 +4,7 @@ from requests.structures import CaseInsensitiveDict
 import pwnlib.log, pwnlib.term, logging
 
 import argparse
-import shelve, hashlib, os, tempfile
+import hashlib, os, tempfile, pathlib
 from pickle import Pickler, Unpickler
 
 from bloodhound.ad.utils import ADUtils
@@ -16,12 +16,13 @@ from bloodhound.enumeration.outputworker import OutputWorker
 
 import functools
 import queue, threading
-import datetime, calendar
+import datetime
 
 class ADExplorerSnapshot(object):
-    def __init__(self, snapfile, log=None):
+    def __init__(self, snapfile, outputfolder, log=None):
 
         self.log = log
+        self.output = outputfolder
         self.snap = Snapshot(snapfile, log=log)
 
         self.snap.parseHeader()
@@ -149,7 +150,7 @@ class ADExplorerSnapshot(object):
 
         for ptype in ['users', 'computers', 'groups', 'domains']:
             self.writeQueues[ptype] = queue.Queue()
-            results_worker = threading.Thread(target=OutputWorker.membership_write_worker, args=(self.writeQueues[ptype], ptype, f"{self.snap.header.server}_{self.snap.header.filetimeUnix}_{ptype}.json"))
+            results_worker = threading.Thread(target=OutputWorker.membership_write_worker, args=(self.writeQueues[ptype], ptype, os.path.join(self.output, f"{self.snap.header.server}_{self.snap.header.filetimeUnix}_{ptype}.json")))
             results_worker.daemon = True
             results_worker.start()
 
@@ -585,7 +586,8 @@ def main():
 
     parser = argparse.ArgumentParser(add_help=True, description='AD Explorer snapshot ingestor for BloodHound', formatter_class=argparse.RawDescriptionHelpFormatter)
 
-    parser.add_argument('snapshot')
+    parser.add_argument('snapshot', type=argparse.FileType('rb'), help="Path to the snapshot .dat file.")
+    parser.add_argument('-o', '--output', required=False, type=pathlib.Path, help="Path to the *.json output folder. Folder must pre-exist.", default=".")
 
     args = parser.parse_args()
 
@@ -597,9 +599,13 @@ def main():
     if pwnlib.term.can_init():
         pwnlib.term.init()
     log.term_mode = pwnlib.term.term_mode
-
-    fh = open(args.snapshot, "rb")
-    ADExplorerSnapshot(fh, log)
+    
+    if not os.path.exists(args.output):
+        log.warn(f"Path {args.output} does not exist.")
+        parser.print_help()
+        return
+    
+    ADExplorerSnapshot(args.snapshot, args.output, log)
 
 if __name__ == '__main__':
     main()
