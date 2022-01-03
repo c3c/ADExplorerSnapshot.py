@@ -272,10 +272,10 @@ class ADExplorerSnapshot(object):
                 continue
             try:
                 sid = self.computersidcache.get(target)
-                data['AllowedToDelegate'].append(sid)
+                computer['AllowedToDelegate'].append(sid)
             except KeyError:
                 if '.' in target:
-                    data['AllowedToDelegate'].append(target.upper())
+                    computer['AllowedToDelegate'].append(target.upper())
         if len(delegatehosts) > 0:
             props['allowedtodelegate'] = delegatehosts
 
