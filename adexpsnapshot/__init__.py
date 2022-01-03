@@ -4,7 +4,7 @@ from requests.structures import CaseInsensitiveDict
 import pwnlib.log, pwnlib.term, logging
 
 import argparse
-import shelve, hashlib, os, tempfile, pathlib
+import hashlib, os, tempfile, pathlib
 from pickle import Pickler, Unpickler
 
 from bloodhound.ad.utils import ADUtils
@@ -16,7 +16,7 @@ from bloodhound.enumeration.outputworker import OutputWorker
 
 import functools
 import queue, threading
-import datetime, calendar
+import datetime
 
 class ADExplorerSnapshot(object):
     def __init__(self, snapfile, outputfolder, log=None):
