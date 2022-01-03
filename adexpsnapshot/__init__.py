@@ -222,7 +222,6 @@ class ADExplorerSnapshot(object):
         distinguishedName = ADUtils.get_entry_property(entry, 'distinguishedName')
         domain = ADUtils.ldap2domain(distinguishedName)
 
-        samname = ADUtils.get_entry_property(entry, 'sAMAccountName')
         primarygroup = MembershipEnumerator.get_primary_membership(entry)
 
         computer = {
@@ -272,10 +271,10 @@ class ADExplorerSnapshot(object):
                 continue
             try:
                 sid = self.computersidcache.get(target)
-                data['AllowedToDelegate'].append(sid)
+                computer['AllowedToDelegate'].append(sid)
             except KeyError:
                 if '.' in target:
-                    data['AllowedToDelegate'].append(target.upper())
+                    computer['AllowedToDelegate'].append(target.upper())
         if len(delegatehosts) > 0:
             props['allowedtodelegate'] = delegatehosts
 
