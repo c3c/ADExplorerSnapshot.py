@@ -24,14 +24,15 @@ pip3 install --user .
 ## Usage
 
 ```
-usage: ADExplorerSnapshot.py [-h] -s SNAPSHOT [-o OUTPUT]
+usage: ADExplorerSnapshot.py [-h] [-o OUTPUT] snapshot
 
 AD Explorer snapshot ingestor for BloodHound
 
+positional arguments:
+  snapshot              Path to the snapshot .dat file.
+
 optional arguments:
   -h, --help            show this help message and exit
-  -s SNAPSHOT, --snapshot SNAPSHOT
-                        Path to the snapshot .dat file.
   -o OUTPUT, --output OUTPUT
                         Path to the *.json output folder. Folder must pre-exist.
 ```

@@ -586,7 +586,7 @@ def main():
 
     parser = argparse.ArgumentParser(add_help=True, description='AD Explorer snapshot ingestor for BloodHound', formatter_class=argparse.RawDescriptionHelpFormatter)
 
-    parser.add_argument('-s', '--snapshot', required=True, type=argparse.FileType('rb'), help="Path to the snapshot .dat file.")
+    parser.add_argument('snapshot', type=argparse.FileType('rb'), help="Path to the snapshot .dat file.")
     parser.add_argument('-o', '--output', required=False, type=pathlib.Path, help="Path to the *.json output folder. Folder must pre-exist.", default=".")
 
     args = parser.parse_args()
