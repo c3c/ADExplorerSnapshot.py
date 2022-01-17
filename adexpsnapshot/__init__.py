@@ -372,10 +372,17 @@ class ADExplorerSnapshot(object):
 
         domain = ADUtils.ldap2domain(distinguishedName)
 
+        membership_entry = {
+            "attributes": {
+                "objectSid": ADUtils.get_entry_property(entry, 'objectSid'),
+                "primaryGroupID": ADUtils.get_entry_property(entry, 'primaryGroupID')
+            }
+        }
+
         user = {
             "AllowedToDelegate": [],
             "ObjectIdentifier": ADUtils.get_entry_property(entry, 'objectSid'),
-            "PrimaryGroupSid": MembershipEnumerator.get_primary_membership(entry),
+            "PrimaryGroupSid": MembershipEnumerator.get_primary_membership(membership_entry),
             "Properties": {
                 "name": resolved_entry['principal'],
                 "domain": domain.upper(),
