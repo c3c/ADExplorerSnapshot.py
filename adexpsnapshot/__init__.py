@@ -223,12 +223,17 @@ class ADExplorerSnapshot(object):
         distinguishedName = ADUtils.get_entry_property(entry, 'distinguishedName')
         domain = ADUtils.ldap2domain(distinguishedName)
 
-        primarygroup = MembershipEnumerator.get_primary_membership(entry)
+        membership_entry = {
+            "attributes": {
+                "objectSid": ADUtils.get_entry_property(entry, 'objectSid'),
+                "primaryGroupID": ADUtils.get_entry_property(entry, 'primaryGroupID')
+            }
+        }
 
         computer = {
             'ObjectIdentifier': ADUtils.get_entry_property(entry, 'objectsid'),
             'AllowedToAct': [],
-            'PrimaryGroupSid': primarygroup,
+            'PrimaryGroupSid': MembershipEnumerator.get_primary_membership(membership_entry),
             'Properties': {
                 'name': hostname.upper(),
                 'objectid': ADUtils.get_entry_property(entry, 'objectsid'),
