@@ -40,7 +40,7 @@ structure.load("""
         uint32 adsType;
         uint32 lenDN;
         wchar DN[lenDN/2];
-        char systemIDGUID[16];
+        char schemaIDGUID[16];
         char attributeSecurityGUID[16];
         char blob[4];
     };
