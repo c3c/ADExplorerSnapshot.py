@@ -9,9 +9,16 @@ AD Explorer allows you to connect to a DC and browse LDAP data. It can also crea
 
 ![ADExplorer](meta/adexplorer.png)
 
+## What is supported
+
+ * Users collection
+ * Groups collection
+ * Computers collection
+ * Trusts collection (as visible from the LDAP DC you are connected to)
+
 ## Limitations
 
-The ingestor only supports offline information collection from the snapshot file and won't interact with systems on the network. That means features like session and localadmin collection are not available. GPO/OU collection is missing. The ingestor processes all data it possibly can from the snapshot (including ACLs). You will only have the data available of the LDAP/DC that you ran the snapshot against.
+The ingestor only supports offline information collection from the snapshot file and won't interact with systems on the network. That means features like session and localadmin collection are not available. GPO/OU collection is missing. The ingestor processes all data it possibly can from the snapshot (including ACLs), but will only output the JSON data that can be interpreted by BloodHound. You will only have the data available of the LDAP/DC that you ran the snapshot against.
 
 ## Installation
 
@@ -41,6 +48,8 @@ optional arguments:
 ![ADExplorerSnapshot.py](meta/adexpsnapshotpy.png)
 
 ## Notes
+
+This library is now supporting the BloodHound v4.1+ output format (JSON format v4). For the old v3 output format, you can use the code in the [v3-format branch](https://github.com/c3c/ADExplorerSnapshot.py/tree/v3-format).
 
 Making snapshots in AD Explorer is more network-intensive than the traditional BloodHound ingestors as it attempts to retrieve all objects it can from the LDAP.
 
