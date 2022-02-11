@@ -1,5 +1,6 @@
 *.cache
 *.json
+*.ndjson
 
 # Byte-compiled / optimized / DLL files
 __pycache__/

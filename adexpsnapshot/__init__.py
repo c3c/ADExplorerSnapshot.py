@@ -18,10 +18,12 @@ from bloodhound.enumeration.outputworker import OutputWorker
 import functools
 import queue, threading
 import calendar, datetime
+from enum import Enum
 
 class ADExplorerSnapshot(object):
-    def __init__(self, snapfile, outputfolder, log=None):
+    OutputMode = Enum('OutputMode', ['BloodHound', 'Objects'])
 
+    def __init__(self, snapfile, outputfolder, log=None):
         self.log = log
         self.output = outputfolder
         self.snap = Snapshot(snapfile, log=log)
@@ -37,9 +39,73 @@ class ADExplorerSnapshot(object):
 
         self.snap.parseProperties()
         self.snap.parseClasses()
-
         self.snap.parseObjectOffsets()
 
+    def outputObjects(self):
+        import codecs, json, base64
+
+        outputfile = f"{self.snap.header.server}_{self.snap.header.filetimeUnix}_objects.ndjson"
+
+        class BaseSafeEncoder(json.JSONEncoder):
+            def default(self, obj):
+                if isinstance(obj, bytes):
+                    return base64.b64encode(obj).decode("ascii")
+                return json.JSONEncoder.default(self, obj)
+
+        def write_worker(result_q, filename):
+            try:
+                fh_out = codecs.open(filename, 'w', 'utf-8')
+            except:
+                logging.warning('Could not write file: %s', filename)
+                result_q.task_done()
+                return
+
+            wroteOnce = False
+            while True:
+                data = result_q.get()
+
+                if data is None:
+                    break
+
+                if not wroteOnce:
+                    wroteOnce = True
+                else:
+                    fh_out.write('\n')
+
+                try:
+                    encoded_member = json.dumps(data, indent=None, cls=BaseSafeEncoder)
+                    fh_out.write(encoded_member)
+                except TypeError:
+                    logging.error('Data error {0}, could not convert data to json'.format(repr(data)))
+                result_q.task_done()
+
+            fh_out.close()
+            result_q.task_done()
+            
+        wq = queue.Queue()
+        results_worker = threading.Thread(target=write_worker, args=(wq, os.path.join(self.output, outputfile)))
+        results_worker.daemon = True
+        results_worker.start()
+
+        if self.log:
+            prog = self.log.progress("Collecting data", rate=0.1)
+
+        for idx, obj in enumerate(self.snap.objects):
+            wq.put((dict(obj.attributes.data)))
+
+            if self.log and self.log.term_mode:
+                prog.status(f"dumped {idx+1}/{self.snap.header.numObjects} objects")
+
+        if self.log:
+            prog.success(f"dumped {self.snap.header.numObjects} objects")
+
+        wq.put(None)
+        wq.join()
+
+        if self.log:
+            self.log.success(f"Output written to {outputfile}")
+
+    def outputBloodHound(self):
         self.sidcache = {}
         self.dncache = CaseInsensitiveDict()
         self.computersidcache = CaseInsensitiveDict()
@@ -677,6 +743,7 @@ def main():
 
     parser.add_argument('snapshot', type=argparse.FileType('rb'), help="Path to the snapshot .dat file.")
     parser.add_argument('-o', '--output', required=False, type=pathlib.Path, help="Path to the *.json output folder. Folder will be created if it doesn't exist. Defaults to the current directory.", default=".")
+    parser.add_argument('-m', '--mode', required=False, help="The output mode to use. Besides BloodHound JSON output files, it is possible to dump all objects with all attributes to NDJSON.", choices=ADExplorerSnapshot.OutputMode.__members__, default='BloodHound')
 
     args = parser.parse_args()
 
@@ -701,7 +768,13 @@ def main():
         parser.print_help()
         return
     
-    ADExplorerSnapshot(args.snapshot, args.output, log)
+    ades = ADExplorerSnapshot(args.snapshot, args.output, log)
+
+    outputmode = ADExplorerSnapshot.OutputMode[args.mode]
+    if outputmode == ADExplorerSnapshot.OutputMode.BloodHound:
+        ades.outputBloodHound()
+    if outputmode == ADExplorerSnapshot.OutputMode.Objects:
+        ades.outputObjects()
 
 if __name__ == '__main__':
     main()

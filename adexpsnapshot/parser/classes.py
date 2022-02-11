@@ -77,7 +77,10 @@ class AttributeDict(UserDict):
         self.fh = obj.fh
         self.raw = raw
 
+        self._dico = CaseInsensitiveDict()
+
         self.getAttribute = functools.lru_cache()(self.getAttribute)
+
         
     def __getitem__(self,  key):
         ret = self.getAttribute(key, raw=self.raw)
@@ -85,10 +88,9 @@ class AttributeDict(UserDict):
             return ret[0]
         return ret
 
-    _dico = CaseInsensitiveDict()
     @property
     def data(self):
-        if len(self._dico):
+        if len(self._dico) > 0:
             return self._dico
 
         for entry in self.obj.mappingTable:
@@ -138,17 +140,15 @@ class AttributeDict(UserDict):
 
             for v in range(numValues):
                 octetStr = structure.char[lengths[v]](self.fh)
-                if raw or attrName in ['sidhistory', 'securityidentifier']: # some stuff is hacked in here for bloodhound lib compat, may need to move that somewhere else
-                    values.append(octetStr)
-                else:
-                    if len(octetStr) == 16 and attrName.endswith("guid"):
-                        val = uuid.UUID(bytes_le=octetStr)
-                    elif attrName in ['objectsid']:
-                        val = str(LdapSid(BytesIO(octetStr)))
-                    else:
-                        val = octetStr.hex()
+                val = octetStr
 
-                    values.append(val)
+                if not raw:
+                    if len(octetStr) == 16 and attrName.endswith("guid"):
+                        val = str(uuid.UUID(bytes_le=octetStr))
+                    elif attrName == 'objectsid':
+                        val = str(LdapSid(BytesIO(octetStr)))
+
+                values.append(val)
 
         elif attrType == ADSTYPE_BOOLEAN:
             assert numValues == 1, ["Multiple boolean values, verify data size", self.fileOffset, attrName]
@@ -171,14 +171,12 @@ class AttributeDict(UserDict):
                 val = structure.int64(self.fh)
                 values.append(val)
 
-        elif attrType == ADSTYPE_UTC_TIME:
+        elif attrType == ADSTYPE_UTC_TIME: # note that date/times can also be returned as Interval type instead (ADSTYPE_LARGE_INTEGER) - actual time units depend on which attribute is using it
 
             for v in range(numValues):
-                val = SystemTime(self.snap)
-                if raw:
-                    values.append(val)
-                else:
-                    values.append(val.unixtimestamp)
+                systime = SystemTime(self.snap)
+                val = systime.unixtimestamp
+                values.append(val)
 
         elif attrType == ADSTYPE_NT_SECURITY_DESCRIPTOR:
 

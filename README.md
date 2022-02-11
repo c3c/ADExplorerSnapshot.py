@@ -5,22 +5,27 @@
 
 ADExplorerSnapshot.py is an AD Explorer snapshot ingestor for [BloodHound](https://bloodhound.readthedocs.io/).
 
-AD Explorer allows you to connect to a DC and browse LDAP data. It can also create snapshots of the server you are currently attached to. This tool allows you to convert those snapshots to BloodHound-compatible JSON files.
+AD Explorer allows you to connect to a DC and browse LDAP data. It can also create snapshots of the server you are currently attached to. This tool allows you to convert those snapshots to BloodHound-compatible JSON files, or dump all available objects in the snapshot to NDJSON for easier processing.
 
 ![ADExplorer](meta/adexplorer.png)
 
 ## What is supported
 
+In `BloodHound` output mode: 
  * Users collection
  * Groups collection
  * Computers collection
  * Trusts collection (as visible from the LDAP DC you are connected to)
 
+In `Objects` output mode, all attributes for every object are parsed and outputted to NDJSON format.
+
 ## Limitations
 
-The ingestor only supports offline information collection from the snapshot file and won't interact with systems on the network. That means features like session and localadmin collection are not available. GPO/OU collection is missing. The ingestor processes all data it possibly can from the snapshot (including ACLs), but will only output the JSON data that can be interpreted by BloodHound. You will only have the data available of the LDAP/DC that you ran the snapshot against.
+The ingestor for BloodHound data only supports offline information collection from the snapshot file and won't interact with systems on the network. That means features like session and localadmin collection are not available. GPO/OU collection is missing. The ingestor processes all data it possibly can from the snapshot (including ACLs), but will only output the JSON data that can be interpreted by BloodHound. You will only have the data available of the LDAP/DC that you ran the snapshot against.
 
 ## Installation
+
+ADExplorerSnapshot.py supports Python 3.6+. Dependencies are managed via pip.
 
 ```
 git clone https://github.com/c3c/ADExplorerSnapshot.py.git
@@ -31,7 +36,7 @@ pip3 install --user .
 ## Usage
 
 ```
-usage: ADExplorerSnapshot.py [-h] [-o OUTPUT] snapshot
+usage: ADExplorerSnapshot.py [-h] [-o OUTPUT] [-m {BloodHound,Objects}] snapshot
 
 AD Explorer snapshot ingestor for BloodHound
 
@@ -41,8 +46,11 @@ positional arguments:
 optional arguments:
   -h, --help            show this help message and exit
   -o OUTPUT, --output OUTPUT
-                        Path to the *.json output folder. Folder will be created if
-                        it doesn't exist. Defaults to the current directory.
+                        Path to the *.json output folder. Folder will be created if it doesn't
+                        exist. Defaults to the current directory.
+  -m {BloodHound,Objects}, --mode {BloodHound,Objects}
+                        The output mode to use. Besides BloodHound JSON output files, it is possible
+                        to dump all objects with all attributes to NDJSON
 ```
 
 ![ADExplorerSnapshot.py](meta/adexpsnapshotpy.png)
@@ -72,3 +80,4 @@ ADExplorerSnapshot.py relies on the following projects:
 Credits:
  - Cedric Van Bockhaven (Deloitte) for implementation
  - Marat Nigmatullin (Deloitte) for the idea
+ 
