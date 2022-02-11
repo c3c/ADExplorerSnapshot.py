@@ -75,7 +75,7 @@ The format in which snapshots are stored by AD Explorer is proprietary and led t
 This code is licensed under the [MIT license](https://opensource.org/licenses/MIT) and makes use of code that is also licensed under the MIT license.
 
 ADExplorerSnapshot.py relies on the following projects:
- - [BloodHound.py](https://github.com/fox-it/BloodHound.py) (the Python BloodHound ingestor); for processing LDAP data.
+ - [BloodHound.py](https://github.com/fox-it/BloodHound.py) (the Python BloodHound ingestor): for processing LDAP data.
  - [dissect.cstruct](https://github.com/fox-it/dissect.cstruct) (C-style binary struct parser): for parsing the binary snapshot data.
 
 Credits:
