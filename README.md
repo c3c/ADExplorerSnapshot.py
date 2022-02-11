@@ -3,7 +3,7 @@
 ![Python 3.6+ compatible](https://img.shields.io/badge/python-%5E3.6-blue)
 ![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)
 
-ADExplorerSnapshot.py is an AD Explorer snapshot ingestor for [BloodHound](https://bloodhound.readthedocs.io/).
+ADExplorerSnapshot.py is an AD Explorer snapshot parser. It is made as an ingestor for [BloodHound](https://bloodhound.readthedocs.io/), and also supports full-object dumping to NDJSON.
 
 AD Explorer allows you to connect to a DC and browse LDAP data. It can also create snapshots of the server you are currently attached to. This tool allows you to convert those snapshots to BloodHound-compatible JSON files, or dump all available objects in the snapshot to NDJSON for easier processing.
 
@@ -21,7 +21,7 @@ In `Objects` output mode, all attributes for every object are parsed and outputt
 
 ## Limitations
 
-The ingestor for BloodHound data only supports offline information collection from the snapshot file and won't interact with systems on the network. That means features like session and localadmin collection are not available. GPO/OU collection is missing. The ingestor processes all data it possibly can from the snapshot (including ACLs), but will only output the JSON data that can be interpreted by BloodHound. You will only have the data available of the LDAP/DC that you ran the snapshot against.
+The ingestor for BloodHound only supports offline information collection from the snapshot file and won't interact with systems on the network. That means features like session and localadmin collection are not available. GPO/OU collection is missing. The ingestor processes all data it possibly can from the snapshot (including ACLs), but will only output the JSON data that can be interpreted by BloodHound. You will only have the data available of the LDAP/DC that you ran the snapshot against.
 
 ## Installation
 
@@ -38,7 +38,7 @@ pip3 install --user .
 ```
 usage: ADExplorerSnapshot.py [-h] [-o OUTPUT] [-m {BloodHound,Objects}] snapshot
 
-AD Explorer snapshot ingestor for BloodHound
+ADExplorerSnapshot.py is an AD Explorer snapshot parser. It is made as an ingestor for BloodHound, and also supports full-object dumping to NDJSON.
 
 positional arguments:
   snapshot              Path to the snapshot .dat file.
