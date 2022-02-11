@@ -46,11 +46,12 @@ positional arguments:
 optional arguments:
   -h, --help            show this help message and exit
   -o OUTPUT, --output OUTPUT
-                        Path to the *.json output folder. Folder will be created if it doesn't
-                        exist. Defaults to the current directory.
+                        Path to the *.json output folder. Folder will be created if it doesn't exist. 
+                        Defaults to the current directory.
   -m {BloodHound,Objects}, --mode {BloodHound,Objects}
                         The output mode to use. Besides BloodHound JSON output files, it is possible
-                        to dump all objects with all attributes to NDJSON
+                        to dump all objects with all attributes to NDJSON.
+                        Defaults to BloodHound output mode.
 ```
 
 ![ADExplorerSnapshot.py](meta/adexpsnapshotpy.png)
