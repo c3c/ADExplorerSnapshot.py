@@ -41,6 +41,14 @@ class ADExplorerSnapshot(object):
         self.snap.parseClasses()
         self.snap.parseObjectOffsets()
 
+        self.sidcache = {}
+        self.dncache = CaseInsensitiveDict()
+        self.computersidcache = CaseInsensitiveDict()
+        self.domains = CaseInsensitiveDict()
+        self.objecttype_guid_map = CaseInsensitiveDict()
+        self.domaincontrollers = []
+        self.rootdomain = None
+
     def outputObjects(self):
         import codecs, json, base64
 
@@ -106,14 +114,18 @@ class ADExplorerSnapshot(object):
             self.log.success(f"Output written to {outputfile}")
 
     def outputBloodHound(self):
-        self.sidcache = {}
-        self.dncache = CaseInsensitiveDict()
-        self.computersidcache = CaseInsensitiveDict()
-        self.domains = CaseInsensitiveDict()
-        self.objecttype_guid_map = CaseInsensitiveDict()
-        self.domaincontrollers = []
-        self.rootdomain = None
+        self.preprocessCached()
 
+        self.numUsers = 0
+        self.numGroups = 0
+        self.numComputers = 0
+        self.numTrusts = 0
+        self.trusts = []
+        self.writeQueues = {}
+
+        self.process()
+
+    def preprocessCached(self):
         cacheFileName = hashlib.md5(f"{self.snap.header.filetime}_{self.snap.header.server}".encode()).hexdigest() + ".cache"
         cachePath = os.path.join(tempfile.gettempdir(), cacheFileName)
 
@@ -148,16 +160,6 @@ class ADExplorerSnapshot(object):
             dico['shelved'] = True
 
             Pickler(open(cachePath, "wb")).dump(dico)
-
-        self.numUsers = 0
-        self.numGroups = 0
-        self.numComputers = 0
-        self.numTrusts = 0
-
-        self.trusts = []
-        self.writeQueues = {}
-
-        self.process()
 
     # build caches: guidmap, domains, forest_domains, computers
     def preprocess(self):
