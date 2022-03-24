@@ -518,7 +518,7 @@ class ADExplorerSnapshot(object):
                 "name": resolved_entry['principal'],
                 "domain": domain.upper(),
                 "domainsid": self.domainsid,
-                "distinguishedName": distinguishedName,
+                "distinguishedname": distinguishedName,
                 "unconstraineddelegation": ADUtils.get_entry_property(entry, 'userAccountControl', default=0) & 0x00080000 == 0x00080000,
                 "trustedtoauth": ADUtils.get_entry_property(entry, 'userAccountControl', default=0) & 0x01000000 == 0x01000000,
                 "passwordnotreqd": ADUtils.get_entry_property(entry, 'userAccountControl', default=0) & 0x00000020 == 0x00000020
