@@ -33,6 +33,14 @@ cd ADExplorerSnapshot.py
 pip3 install --user .
 ```
 
+Additionally, Certipy is required.
+
+```
+https://github.com/ly4k/Certipy.git
+cd Certipy
+python3 setup.py install
+```
+
 ## Usage
 
 ```
