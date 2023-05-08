@@ -403,7 +403,7 @@ class ADExplorerSnapshot(object):
                 logging.warning('Invalid delegation target: %s', host)
                 continue
             try:
-                sid = self.computersidcache.get(target)
+                sid = self.computersidcache[target]
                 computer['AllowedToDelegate'].append(sid)
             except KeyError:
                 if '.' in target:
