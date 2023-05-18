@@ -15,14 +15,14 @@ from bloodhound.ad.structures import LDAP_SID
 from frozendict import frozendict
 from bloodhound.enumeration.outputworker import OutputWorker
 
-from certipy.constants import *
-from certipy.find import filetime_to_str
-from certipy.ldap import LDAPEntry
-from certipy.security import ActiveDirectorySecurity, CertifcateSecurity, CASecurity
+from certipy.lib.constants import *
+from certipy.lib.security import ActiveDirectorySecurity, CertifcateSecurity, CASecurity
+from certipy.commands.find import filetime_to_str
+
 from asn1crypto import x509
 import functools
 import queue, threading
-import calendar, datetime
+import datetime
 from enum import Enum
 from typing import List
 
@@ -50,13 +50,14 @@ class ADExplorerSnapshot(object):
         self.sidcache = {}
         self.dncache = CaseInsensitiveDict()
         self.computersidcache = CaseInsensitiveDict()
-        self.certtemplatesidcache = CaseInsensitiveDict()
-        self.cassidcache = CaseInsensitiveDict()
         self.domains = CaseInsensitiveDict()
         self.objecttype_guid_map = CaseInsensitiveDict()
-        self.certificatesidcache = CaseInsensitiveDict()
         self.domaincontrollers = []
         self.rootdomain = None
+
+        self.cassidcache = CaseInsensitiveDict()
+        self.certificatesidcache = CaseInsensitiveDict()
+        self.certtemplatesidcache = CaseInsensitiveDict()
         self.templatesArray = {}
 
     def outputObjects(self):
@@ -224,14 +225,14 @@ class ADExplorerSnapshot(object):
                     self.computersidcache[dnshostname] = objectSid
 
             # get certtemplates
-            if ADUtils.get_entry_property(obj,'objectClass', "['','']")[1] == "pKICertificateTemplate":
+            if 'pkicertificatetemplate' in obj.classes:
                 name = ADUtils.get_entry_property(obj, 'name')
                 if name:
                     self.certtemplatesidcache[name] = ADUtils.get_entry_property(obj,'objectGUID', 0)
                     self.certificatesidcache[name] = ADUtils.get_entry_property(obj,'objectGUID', 0)
 
             # get cas
-            if ADUtils.get_entry_property(obj,'objectClass', "['','']")[1] == "pKIEnrollmentService":
+            if 'pkienrollmentservice' in obj.classes:
                 name = ADUtils.get_entry_property(obj, 'name')
                 if name:
                     self.cassidcache[name] = ADUtils.get_entry_property(obj,'objectGUID', 0)
@@ -252,10 +253,10 @@ class ADExplorerSnapshot(object):
                 self.domaincontrollers.append(idx)
 
             if self.log and self.log.term_mode:
-                prog.status(f"{idx+1}/{self.snap.header.numObjects} ({len(self.sidcache)} sids, {len(self.computersidcache)} computers, {len(self.domains)} domains with {len(self.domaincontrollers)} DCs)")
+                prog.status(f"{idx+1}/{self.snap.header.numObjects} ({len(self.sidcache)} sids, {len(self.computersidcache)} computers, {len(self.certtemplatesidcache)} certtemplates, {len(self.cassidcache)} CAs, {len(self.domains)} domains with {len(self.domaincontrollers)} DCs)")
 
         if self.log:
-            prog.success(f"{len(self.sidcache)} sids, {len(self.computersidcache)} computers, {len(self.certtemplatesidcache)} certtemplates, {len(self.cassidcache)} cas, {len(self.domains)} domains with {len(self.domaincontrollers)} DCs")
+            prog.success(f"{len(self.sidcache)} sids, {len(self.computersidcache)} computers, {len(self.certtemplatesidcache)} certtemplates, {len(self.cassidcache)} CAs, {len(self.domains)} domains with {len(self.domaincontrollers)} DCs")
 
     def process(self):
         self.domainname = ADUtils.ldap2domain(self.rootdomain)
@@ -265,33 +266,29 @@ class ADExplorerSnapshot(object):
         if self.log:
             prog = self.log.progress("Collecting data", rate=0.1)
 
-        for ptype in ['users', 'computers', 'groups', 'domains','certificates']:
-            if ptype == 'certificates':
-                 ptype = 'gpos'
+        for ptype in ['users', 'computers', 'groups', 'domains', 'gpos']:
             self.writeQueues[ptype] = queue.Queue()
             results_worker = threading.Thread(target=OutputWorker.membership_write_worker, args=(self.writeQueues[ptype], ptype, os.path.join(self.output, f"{self.snap.header.server}_{self.snap.header.filetimeUnix}_{ptype}.json")))
             results_worker.daemon = True
             results_worker.start()
 
         for idx,obj in enumerate(self.snap.objects):
-            for fun in [self.processUsers, self.processComputers, self.processGroups, self.processTrusts, self.processCertificates]:
+            for fun in [self.processUsers, self.processComputers, self.processGroups, self.processTrusts, self.processCertTemplates, self.processCAs]:
                 ret = fun(obj)
                 if ret:
                     break
 
             if self.log and self.log.term_mode:
-                prog.status(f"{idx+1}/{self.snap.header.numObjects} ({self.numUsers} users, {self.numGroups} groups, {self.numComputers} computers, {self.numCertTemplates} certtemplates, {self.numCAS} cas, {self.numTrusts} trusts)")
+                prog.status(f"{idx+1}/{self.snap.header.numObjects} ({self.numUsers} users, {self.numGroups} groups, {self.numComputers} computers, {self.numCertTemplates} certtemplates, {self.numCAS} CAs, {self.numTrusts} trusts)")
 
         if self.log:
-            prog.success(f"{self.numUsers} users, {self.numGroups} groups, {self.numComputers} computers, {self.numCertTemplates} certtemplates, {self.numCAS} cas, {self.numTrusts} trusts")
+            prog.success(f"{self.numUsers} users, {self.numGroups} groups, {self.numComputers} computers, {self.numCertTemplates} certtemplates, {self.numCAS} CAs, {self.numTrusts} trusts")
 
         self.write_default_users()
         self.write_default_groups()
         self.processDomains()
 
-        for ptype in ['users', 'computers', 'groups', 'domains','certificates']:
-            if ptype == 'certificates':
-                 ptype = 'gpos'
+        for ptype in ['users', 'computers', 'groups', 'domains', 'gpos']:
             self.writeQueues[ptype].put(None)
             self.writeQueues[ptype].join()
 
@@ -474,16 +471,11 @@ class ADExplorerSnapshot(object):
         self.writeQueues["computers"].put(computer)
         return True
 
-    def processCertificates(self, entry):
-        if ADUtils.get_entry_property(entry,'objectClass', "['','']")[1] == "pKICertificateTemplate":
-            self.processCertTemplates(entry)
-        elif ADUtils.get_entry_property(entry,'objectClass', "['','']")[1] == "pKIEnrollmentService":
-            self.processCAS(entry)
-        return True
-
-
     def processCertTemplates(self, entry):
-        name = ADUtils.get_entry_property(entry, 'Name')
+        if not 'pkicertificatetemplate' in entry.classes:
+            return
+
+        name = ADUtils.get_entry_property(entry, 'name')
         if not name:
             return
 
@@ -626,15 +618,13 @@ class ADExplorerSnapshot(object):
         self.writeQueues["gpos"].put(certtemplate)
         return True
 
-
-    def processCAS(self, entry):
-        # if not ADUtils.get_entry_property(entry,'objectClass', "['','']")[1] == "pKIEnrollmentService":
-        #     return
-
-        name = ADUtils.get_entry_property(entry, 'Name')
+    def processCAs(self, entry):
+        if not 'pkienrollmentservice' in entry.classes:
+            return
+        
+        name = ADUtils.get_entry_property(entry, 'name')
         if not name:
             return
-
         
         object_identifier = ADUtils.get_entry_property(entry, 'objectGUID')
         ca_name = ADUtils.get_entry_property(entry, 'cn') 
