@@ -89,4 +89,4 @@ ADExplorerSnapshot.py relies on the following projects:
 Credits:
  - Cedric Van Bockhaven (Deloitte) for implementation
  - Marat Nigmatullin (Deloitte) for the idea
- 
+ - The FalconForce team for adding certificate template support
