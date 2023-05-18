@@ -16,6 +16,7 @@ In `BloodHound` output mode:
  * Groups collection
  * Computers collection
  * Trusts collection (as visible from the LDAP DC you are connected to)
+ * Certificate template collection
 
 In `Objects` output mode, all attributes for every object are parsed and outputted to NDJSON format.
 
@@ -31,14 +32,6 @@ ADExplorerSnapshot.py supports Python 3.6+. Dependencies are managed via pip.
 git clone https://github.com/c3c/ADExplorerSnapshot.py.git
 cd ADExplorerSnapshot.py
 pip3 install --user .
-```
-
-Additionally, Certipy is required.
-
-```
-https://github.com/ly4k/Certipy.git
-cd Certipy
-python3 setup.py install
 ```
 
 ## Usage
@@ -91,6 +84,7 @@ This code is licensed under the [MIT license](https://opensource.org/licenses/MI
 ADExplorerSnapshot.py relies on the following projects:
  - [BloodHound.py](https://github.com/fox-it/BloodHound.py) (the Python BloodHound ingestor): for processing LDAP data.
  - [dissect.cstruct](https://github.com/fox-it/dissect.cstruct) (C-style binary struct parser): for parsing the binary snapshot data.
+ - [certipy](https://github.com/ly4k/Certipy) (ADCS enumeration tool): for processing certificate template information.
 
 Credits:
  - Cedric Van Bockhaven for implementation
