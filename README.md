@@ -70,6 +70,12 @@ The AD Explorer snapshot parser is implemented as its own module, which could al
 
 The format in which snapshots are stored by AD Explorer is proprietary and led to a fun reverse engineering journey. A 010 editor template is included in this repository, which I used for iteratively mapping out the contents of the snapshot into structs.
 
+## OPSEC and detection
+
+On an OPSEC-related note, AD Explorer is a legitimate Microsoft tool. When performing a snapshot, only limited queries are made to the LDAP server `(objectGuid=*)`. However, the resultset is huge as all objects and their associated attributes are retrieved. This results in a rather voluminous output. 
+
+Detection of this tool is possible in multiple ways, for which I refer to the excellent blog post by FalconForce: [FalconFriday — Detecting Active Directory Data Collection — 0xFF21](https://falconforce.nl/falconfriday-detecting-active-directory-data-collection-0xff21/).
+
 ## License and credits
 
 This code is licensed under the [MIT license](https://opensource.org/licenses/MIT) and makes use of code that is also licensed under the MIT license.
@@ -79,6 +85,7 @@ ADExplorerSnapshot.py relies on the following projects:
  - [dissect.cstruct](https://github.com/fox-it/dissect.cstruct) (C-style binary struct parser): for parsing the binary snapshot data.
 
 Credits:
- - Cedric Van Bockhaven (Deloitte) for implementation
- - Marat Nigmatullin (Deloitte) for the idea
- 
+ - Cedric Van Bockhaven for implementation
+ - Marat Nigmatullin for the idea
+
+Thanks to Deloitte for providing the environment in which this tool was developed.
