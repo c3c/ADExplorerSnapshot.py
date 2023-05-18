@@ -298,7 +298,8 @@ class ADExplorerSnapshot(object):
 
         hostname = ADUtils.get_entry_property(entry, 'dNSHostName')
         if not hostname:
-            return
+            resolved_entry = ADUtils.resolve_ad_entry(entry)
+            hostname = resolved_entry['principal']
 
         distinguishedName = ADUtils.get_entry_property(entry, 'distinguishedName')
 
