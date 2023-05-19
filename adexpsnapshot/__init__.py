@@ -297,10 +297,13 @@ class ADExplorerSnapshot(object):
 
     def processDomains(self):
         level_id = ADUtils.get_entry_property(self.domain_object, 'msds-behavior-version')
-        try:
-            functional_level = ADUtils.FUNCTIONAL_LEVELS[int(level_id)]
-        except KeyError:
-            functional_level = 'Unknown'
+        if level_id is None:
+            functional_level = 'Unkown'
+        else:
+            try:
+                functional_level = ADUtils.FUNCTIONAL_LEVELS[int(level_id)]
+            except KeyError:
+                functional_level = 'Unknown'
 
         domain = {
             "ObjectIdentifier": ADUtils.get_entry_property(self.domain_object, 'objectSid'),
