@@ -296,7 +296,7 @@ class ADExplorerSnapshot(object):
             self.log.success(f"Output written to {self.snap.header.server}_{self.snap.header.filetimeUnix}_*.json files")
 
     def processDomains(self):
-        level_id = ADUtils.get_entry_property(self.domain_object, 'msds-behavior-version')
+        level_id = ADUtils.get_entry_property(self.domain_object, 'msds-behavior-version', -1)
         try:
             functional_level = ADUtils.FUNCTIONAL_LEVELS[int(level_id)]
         except KeyError:
