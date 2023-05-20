@@ -57,9 +57,14 @@ optional arguments:
 
 ![ADExplorerSnapshot.py](meta/adexpsnapshotpy.png)
 
+Certificate templates can be imported in [BloodHound](https://github.com/BloodHoundAD/BloodHound) format or [BloodHound-ly4k](https://github.com/ly4k/BloodHound) format.
+If you use the regular BloodHound version you should only import the `cert_bh` JSON file (which are imported as GPOs). 
+If you use @ly4k's fork, you should import the `cert_ly4k` files instead. 
+
 ## Notes
 
-This library is now supporting the BloodHound v4.1+ output format (JSON format v4). For the old v3 output format, you can use the code in the [v3-format branch](https://github.com/c3c/ADExplorerSnapshot.py/tree/v3-format).
+This library is now supporting the BloodHound v4.2+ output format (JSON format v4). Version 4.1 and below are no longer supported.
+For the old v3 output format, you can use the code in the [v3-format branch](https://github.com/c3c/ADExplorerSnapshot.py/tree/v3-format).
 
 Making snapshots in AD Explorer is more network-intensive than the traditional BloodHound ingestors as it attempts to retrieve all objects it can from the LDAP.
 
