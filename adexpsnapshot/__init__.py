@@ -219,7 +219,7 @@ class ADExplorerSnapshot(object):
                         self.domains[ncname] = idx
 
             # get computers
-            if ADUtils.get_entry_property(obj, 'sAMAccountType', -1) == 805306369 and not (ADUtils.get_entry_property(obj, 'userAccountControl', 0) & 0x02 == 0x02):
+            if ADUtils.get_entry_property(obj, 'sAMAccountType', -1) == 805306369:
                 dnshostname = ADUtils.get_entry_property(obj, 'dNSHostname')
                 if dnshostname:
                     self.computersidcache[dnshostname] = objectSid
@@ -266,9 +266,19 @@ class ADExplorerSnapshot(object):
         if self.log:
             prog = self.log.progress("Collecting data", rate=0.1)
 
-        for ptype in ['users', 'computers', 'groups', 'domains', 'gpos']:
+        for ptype in ['users', 'computers', 'groups', 'domains', 'cert_bh', 'cert_ly4k_tpls', 'cert_ly4k_cas']:
             self.writeQueues[ptype] = queue.Queue()
-            results_worker = threading.Thread(target=OutputWorker.membership_write_worker, args=(self.writeQueues[ptype], ptype, os.path.join(self.output, f"{self.snap.header.server}_{self.snap.header.filetimeUnix}_{ptype}.json")))
+            btype = ptype
+
+            if ptype.startswith("cert_"):
+                if ptype.endswith("bh"):
+                    btype = "gpos"
+                elif ptype.endswith("ly4k_tpls"):
+                    btype = "templates"
+                elif ptype.endswith("ly4k_cas"):
+                    btype = "cas"
+            
+            results_worker = threading.Thread(target=OutputWorker.membership_write_worker, args=(self.writeQueues[ptype], btype, os.path.join(self.output, f"{self.snap.header.server}_{self.snap.header.filetimeUnix}_{ptype}.json")))
             results_worker.daemon = True
             results_worker.start()
 
@@ -288,7 +298,7 @@ class ADExplorerSnapshot(object):
         self.write_default_groups()
         self.processDomains()
 
-        for ptype in ['users', 'computers', 'groups', 'domains', 'gpos']:
+        for ptype in ['users', 'computers', 'groups', 'domains', 'cert_bh', 'cert_ly4k_tpls', 'cert_ly4k_cas']:
             self.writeQueues[ptype].put(None)
             self.writeQueues[ptype].join()
 
@@ -309,8 +319,9 @@ class ADExplorerSnapshot(object):
                 "domain": self.domainname.upper(),
                 "domainsid": ADUtils.get_entry_property(self.domain_object, 'objectSid'),
                 "distinguishedname": ADUtils.get_entry_property(self.domain_object, 'distinguishedName'),
-                "description": ADUtils.get_entry_property(self.domain_object, 'description'),
+                "description": ADUtils.get_entry_property(self.domain_object, 'description', ''),
                 "functionallevel": functional_level,
+                "highvalue": True,
                 "whencreated": ADUtils.get_entry_property(self.domain_object, 'whencreated', default=0)
             },
             "Trusts": [],
@@ -335,7 +346,7 @@ class ADExplorerSnapshot(object):
         self.writeQueues["domains"].put(domain)
 
     def processComputers(self, entry):
-        if not ADUtils.get_entry_property(entry, 'sAMAccountType', -1) == 805306369 or (ADUtils.get_entry_property(entry, 'userAccountControl', 0) & 0x02 == 0x02):
+        if not ADUtils.get_entry_property(entry, 'sAMAccountType', -1) == 805306369:
             return
 
         hostname = ADUtils.get_entry_property(entry, 'dNSHostName')
@@ -409,6 +420,7 @@ class ADExplorerSnapshot(object):
         props['unconstraineddelegation'] = ADUtils.get_entry_property(entry, 'userAccountControl', default=0) & 0x00080000 == 0x00080000
         props['enabled'] = ADUtils.get_entry_property(entry, 'userAccountControl', default=0) & 2 == 0
         props['trustedtoauth'] = ADUtils.get_entry_property(entry, 'userAccountControl', default=0) & 0x01000000 == 0x01000000
+        props['samaccountname'] = ADUtils.get_entry_property(entry, 'sAMAccountName')
 
         props['haslaps'] = ADUtils.get_entry_property(entry, 'ms-mcs-admpwdexpirationtime', 0) != 0
 
@@ -616,7 +628,8 @@ class ADExplorerSnapshot(object):
         }
 
         self.numCertTemplates += 1
-        self.writeQueues["gpos"].put(certtemplate)
+        self.writeQueues["cert_bh"].put(certtemplate)
+        self.writeQueues["cert_ly4k_tpls"].put(certtemplate)
         return True
 
     def processCAs(self, entry):
@@ -672,7 +685,8 @@ class ADExplorerSnapshot(object):
             }
 
         self.numCAS += 1
-        self.writeQueues["gpos"].put(cas)
+        self.writeQueues["cert_bh"].put(cas)
+        self.writeQueues["cert_ly4k_cas"].put(cas)
         return True
 
     def processTrusts(self, entry):
@@ -721,8 +735,8 @@ class ADExplorerSnapshot(object):
             group['ObjectIdentifier'] = '%s-%s' % (self.domainname.upper(), sid)
 
         group['Properties']['admincount'] = ADUtils.get_entry_property(entry, 'adminCount', default=0) == 1
-        group['Properties']['description'] = ADUtils.get_entry_property(entry, 'description')
-        group['Properties']['whencreated'] = ADUtils.get_entry_property(entry, 'whencreated', default=0)
+        group['Properties']['description'] = ADUtils.get_entry_property(entry, 'description', '')
+        group['Properties']['whencreated'] = ADUtils.get_entry_property(entry, 'whencreated', default=0) # TBD: calendar.timegm(whencreated.timetuple())
 
         for member in ADUtils.get_entry_property(entry, 'member', []):
             resolved_member = self.get_membership(member)
