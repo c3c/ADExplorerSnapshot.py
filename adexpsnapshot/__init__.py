@@ -55,7 +55,7 @@ class ADExplorerSnapshot(object):
         self.objecttype_guid_map = CaseInsensitiveDict()
         self.domaincontrollers = []
         self.rootdomain = None
-        self.certtemplates = defaultdict(list)
+        self.certtemplates = defaultdict(set)
 
     def outputObjects(self):
         import codecs, json, base64
@@ -224,8 +224,7 @@ class ADExplorerSnapshot(object):
                 if ADUtils.get_entry_property(obj, 'certificateTemplates'):
                     templates = ADUtils.get_entry_property(obj, 'certificateTemplates')
                     for template in templates:
-                        if name not in self.certtemplates[template]:
-                            self.certtemplates[template].append(name)
+                        self.certtemplates[template].add(name)
 
             # get dcs
             if ADUtils.get_entry_property(obj, 'userAccountControl', 0) & 0x2000 == 0x2000:
@@ -557,10 +556,10 @@ class ADExplorerSnapshot(object):
             'name': "%s@%s"
             % (
               ADUtils.get_entry_property(entry, "CN").upper(),
-              ADUtils.ldap2domain(self.rootdomain).upper()
+              self.domainname.upper()
             ),
             'type': 'Certificate Template',
-            'domain': ADUtils.ldap2domain(self.rootdomain).upper(),
+            'domain': self.domainname.upper(),
             'Template Name': ADUtils.get_entry_property(entry, 'CN'),
             'Display Name': ADUtils.get_entry_property(entry, 'displayName'),
             'Client Authentication': client_authentication,
@@ -574,7 +573,7 @@ class ADExplorerSnapshot(object):
             'Authorized Signatures Required': authorized_signatures_required,
             'Application Policies': application_policies,
             'Enabled': enabled,
-            'Certificate Authorities': self.certtemplates[name],
+            'Certificate Authorities': list(self.certtemplates[name]),
             },          
             'ObjectIdentifier': object_identifier.lstrip("{").rstrip("}"), 
             'Aces': aces,
@@ -618,9 +617,9 @@ class ADExplorerSnapshot(object):
                     "name": "%s@%s"
                     % (
                         name.upper(),
-                        ADUtils.ldap2domain(self.rootdomain).upper(),
+                        self.domainname.upper(),
                     ),
-                    "domain": ADUtils.ldap2domain(self.rootdomain).upper(),
+                    "domain": self.domainname.upper(),
                     "type": "Enrollment Service",
                     "CA Name": ca_name,
                     "DNS Name": dns_name,
