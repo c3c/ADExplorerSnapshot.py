@@ -16,10 +16,11 @@ from frozendict import frozendict
 from bloodhound.enumeration.outputworker import OutputWorker
 
 from certipy.lib.constants import *
-from certipy.lib.security import ActiveDirectorySecurity, CertifcateSecurity, CASecurity
+from certipy.lib.security import ActiveDirectorySecurity, CertifcateSecurity as CertificateSecurity, CASecurity
 from certipy.commands.find import filetime_to_str
-
 from asn1crypto import x509
+
+from collections import defaultdict
 import functools
 import queue, threading
 import datetime
@@ -58,7 +59,7 @@ class ADExplorerSnapshot(object):
         self.cassidcache = CaseInsensitiveDict()
         self.certificatesidcache = CaseInsensitiveDict()
         self.certtemplatesidcache = CaseInsensitiveDict()
-        self.templatesArray = {}
+        self.certtemplates = defaultdict(list)
 
     def outputObjects(self):
         import codecs, json, base64
@@ -131,10 +132,11 @@ class ADExplorerSnapshot(object):
         self.numGroups = 0
         self.numComputers = 0
         self.numTrusts = 0
+        self.numCertTemplates = 0
+        self.numCAs = 0
+
         self.trusts = []
         self.writeQueues = {}
-        self.numCertTemplates = 0
-        self.numCAS = 0
 
         self.process()
 
@@ -224,39 +226,24 @@ class ADExplorerSnapshot(object):
                 if dnshostname:
                     self.computersidcache[dnshostname] = objectSid
 
-            # get certtemplates
-            if 'pkicertificatetemplate' in obj.classes:
-                name = ADUtils.get_entry_property(obj, 'name')
-                if name:
-                    self.certtemplatesidcache[name] = ADUtils.get_entry_property(obj,'objectGUID', 0)
-                    self.certificatesidcache[name] = ADUtils.get_entry_property(obj,'objectGUID', 0)
-
-            # get cas
+            # get all cert templates
             if 'pkienrollmentservice' in obj.classes:
                 name = ADUtils.get_entry_property(obj, 'name')
-                if name:
-                    self.cassidcache[name] = ADUtils.get_entry_property(obj,'objectGUID', 0)
-                    self.certificatesidcache[name] = ADUtils.get_entry_property(obj,'objectGUID', 0)
-                # get all certificate templates per CA
-                if(ADUtils.get_entry_property(obj, 'certificateTemplates')):
-                  templates = ADUtils.get_entry_property(obj, 'certificateTemplates')
-                  for template in templates:
-                      if template in self.templatesArray:
-                          if name not in self.templatesArray[template]: 
-                              self.templatesArray[template].append(name)
-                      else:
-                          self.templatesArray[template] = []
-                          self.templatesArray[template].append(name)
+                if ADUtils.get_entry_property(obj, 'certificateTemplates'):
+                    templates = ADUtils.get_entry_property(obj, 'certificateTemplates')
+                    for template in templates:
+                        if name not in self.certtemplates[template]:
+                            self.certtemplates[template].append(name)
 
             # get dcs
             if ADUtils.get_entry_property(obj, 'userAccountControl', 0) & 0x2000 == 0x2000:
                 self.domaincontrollers.append(idx)
 
             if self.log and self.log.term_mode:
-                prog.status(f"{idx+1}/{self.snap.header.numObjects} ({len(self.sidcache)} sids, {len(self.computersidcache)} computers, {len(self.certtemplatesidcache)} certtemplates, {len(self.cassidcache)} CAs, {len(self.domains)} domains with {len(self.domaincontrollers)} DCs)")
+                prog.status(f"{idx+1}/{self.snap.header.numObjects} ({len(self.sidcache)} sids, {len(self.computersidcache)} computers, {len(self.domains)} domains with {len(self.domaincontrollers)} DCs)")
 
         if self.log:
-            prog.success(f"{len(self.sidcache)} sids, {len(self.computersidcache)} computers, {len(self.certtemplatesidcache)} certtemplates, {len(self.cassidcache)} CAs, {len(self.domains)} domains with {len(self.domaincontrollers)} DCs")
+            prog.success(f"{len(self.sidcache)} sids, {len(self.computersidcache)} computers, {len(self.domains)} domains with {len(self.domaincontrollers)} DCs")
 
     def process(self):
         self.domainname = ADUtils.ldap2domain(self.rootdomain)
@@ -493,41 +480,21 @@ class ADExplorerSnapshot(object):
             return
 
         # Enable check if cert is under any CA (e.g. enabled)
-        if name in self.templatesArray:
-            enabled = True
-        else:
-            self.templatesArray[name] = []
-            enabled = False
+        enabled = name in self.certtemplates
 
         object_identifier = ADUtils.get_entry_property(entry, 'objectGUID')
         validity_period = filetime_to_str(ADUtils.get_entry_property(entry, 'pKIExpirationPeriod'))
         renewal_period = filetime_to_str(ADUtils.get_entry_property(entry, 'pKIOverlapPeriod'))
         
-        certificate_name_flag = ADUtils.get_entry_property(entry, 'msPKI-Certificate-Name-Flag')
-        if certificate_name_flag is not None:
-            certificate_name_flag = MS_PKI_CERTIFICATE_NAME_FLAG(
-                int(certificate_name_flag)
-            )
-        else:
-            certificate_name_flag = MS_PKI_CERTIFICATE_NAME_FLAG(0)
+        certificate_name_flag = ADUtils.get_entry_property(entry, 'msPKI-Certificate-Name-Flag', 0)
+        certificate_name_flag = MS_PKI_CERTIFICATE_NAME_FLAG(int(certificate_name_flag))
 
-        enrollment_flag = ADUtils.get_entry_property(entry, 'msPKI-Enrollment-Flag')
-        if enrollment_flag is not None:
-              enrollment_flag = MS_PKI_ENROLLMENT_FLAG(int(enrollment_flag))
-        else:
-              enrollment_flag = MS_PKI_ENROLLMENT_FLAG(0)
+        enrollment_flag = ADUtils.get_entry_property(entry, 'msPKI-Enrollment-Flag', 0)
+        enrollment_flag = MS_PKI_ENROLLMENT_FLAG(int(enrollment_flag))
 
-        authorized_signatures_required = ADUtils.get_entry_property(entry, 'msPKI-RA-Signature')
-        if authorized_signatures_required is not None:
-            authorized_signatures_required = int(authorized_signatures_required)
+        authorized_signatures_required = int(ADUtils.get_entry_property(entry, 'msPKI-RA-Signature', 0))
 
-        application_policies = ADUtils.get_entry_property(entry, 'msPKI-RA-Application-Policies', raw=True)
-        if not isinstance(application_policies, list):
-            if application_policies is None:
-                application_policies = []
-            else:
-                application_policies = [application_policies]
-
+        application_policies = ADUtils.get_entry_property(entry, 'msPKI-RA-Application-Policies', raw=True, default=[])
         application_policies = list(
             map(
                 lambda x: OID_TO_STR_MAP[x] if x in OID_TO_STR_MAP else x,
@@ -535,15 +502,9 @@ class ADExplorerSnapshot(object):
             )
         )
 
-        eku = ADUtils.get_entry_property(entry, "pKIExtendedKeyUsage")
-        if not isinstance(eku, list):
-            if eku is None:
-                eku = []
-            else:
-                eku = [eku]
-
+        extended_key_usage = ADUtils.get_entry_property(entry, "pKIExtendedKeyUsage", default=[])
         extended_key_usage = list(
-            map(lambda x: OID_TO_STR_MAP[x] if x in OID_TO_STR_MAP else x, eku)
+            map(lambda x: OID_TO_STR_MAP[x] if x in OID_TO_STR_MAP else x, extended_key_usage)
         )
 
         client_authentication = (
@@ -581,7 +542,7 @@ class ADExplorerSnapshot(object):
             MS_PKI_ENROLLMENT_FLAG.PEND_ALL_REQUESTS in enrollment_flag
         )
 
-        security = CertifcateSecurity(ADUtils.get_entry_property(entry, "nTSecurityDescriptor"))
+        security = CertificateSecurity(ADUtils.get_entry_property(entry, "nTSecurityDescriptor", raw=True))
         aces = self.security_to_bloodhound_aces(security)
 
         certtemplate = {
@@ -621,7 +582,7 @@ class ADExplorerSnapshot(object):
             'Authorized Signatures Required': authorized_signatures_required,
             'Application Policies': application_policies,
             'Enabled': enabled,
-            'Certificate Authorities': self.templatesArray[name],
+            'Certificate Authorities': self.certtemplates[name],
             },          
             'ObjectIdentifier': object_identifier.lstrip("{").rstrip("}"), 
             'Aces': aces,
@@ -684,7 +645,7 @@ class ADExplorerSnapshot(object):
                 "Aces": aces,
             }
 
-        self.numCAS += 1
+        self.numCAs += 1
         self.writeQueues["cert_bh"].put(cas)
         self.writeQueues["cert_ly4k_cas"].put(cas)
         return True
@@ -724,6 +685,7 @@ class ADExplorerSnapshot(object):
             "Properties": {
                 "domain": self.domainname.upper(),
                 "domainsid": self.domainsid,
+                "highvalue": is_highvalue(sid),
                 "name": resolved_entry['principal'],
                 "distinguishedname": distinguishedName
             },
@@ -736,7 +698,7 @@ class ADExplorerSnapshot(object):
 
         group['Properties']['admincount'] = ADUtils.get_entry_property(entry, 'adminCount', default=0) == 1
         group['Properties']['description'] = ADUtils.get_entry_property(entry, 'description', '')
-        group['Properties']['whencreated'] = ADUtils.get_entry_property(entry, 'whencreated', default=0) # TBD: calendar.timegm(whencreated.timetuple())
+        group['Properties']['whencreated'] = ADUtils.get_entry_property(entry, 'whencreated', default=0)
 
         for member in ADUtils.get_entry_property(entry, 'member', []):
             resolved_member = self.get_membership(member)
