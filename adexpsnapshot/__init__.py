@@ -55,10 +55,6 @@ class ADExplorerSnapshot(object):
         self.objecttype_guid_map = CaseInsensitiveDict()
         self.domaincontrollers = []
         self.rootdomain = None
-
-        self.cassidcache = CaseInsensitiveDict()
-        self.certificatesidcache = CaseInsensitiveDict()
-        self.certtemplatesidcache = CaseInsensitiveDict()
         self.certtemplates = defaultdict(list)
 
     def outputObjects(self):
@@ -161,9 +157,7 @@ class ADExplorerSnapshot(object):
             self.domains = dico['domains']
             self.domaincontrollers = dico['domaincontrollers']
             self.rootdomain = dico['rootdomain']
-            self.certtemplatesidcache = dico['certtemplatesidcache']
-            self.cassidcache = dico['cassidcache']
-            self.certificatesidcache = dico['certificatesidcache']
+            self.certtemplates = dico['certtemplates']
         else:
             self.preprocess()
 
@@ -175,10 +169,8 @@ class ADExplorerSnapshot(object):
             dico['domains'] = self.domains
             dico['domaincontrollers'] = self.domaincontrollers
             dico['rootdomain'] = self.rootdomain
+            dico['certtemplates'] = self.certtemplates
             dico['shelved'] = True
-            dico['certtemplatesidcache'] = self.certtemplatesidcache
-            dico['cassidcache'] = self.cassidcache
-            dico['certificatesidcache'] = self.certificatesidcache
             Pickler(open(cachePath, "wb")).dump(dico)
 
     # build caches: guidmap, domains, forest_domains, computers
