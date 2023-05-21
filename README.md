@@ -59,7 +59,7 @@ optional arguments:
 
 Certificate templates can be imported in [BloodHound](https://github.com/BloodHoundAD/BloodHound) format or [BloodHound-ly4k](https://github.com/ly4k/BloodHound) format.
 If you use the regular BloodHound version you should only import the `cert_bh` JSON file (which are imported as GPOs). 
-If you use ly4k's fork, you should import the `cert_ly4k` files instead. 
+If you use ly4k's fork, you should import the `cert_ly4k` files instead. Some information will be omitted (e.g. for ESC8 whether Web Enrollment is enabled) as it cannot be collected with AD Explorer.
 
 ## Notes
 
