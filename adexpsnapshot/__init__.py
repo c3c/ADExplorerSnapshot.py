@@ -1000,7 +1000,10 @@ class ADExplorerSnapshot(object):
                         'principal': sid
                     }
 
-            standard_rights = rights["rights"].to_list()
+            try:
+                standard_rights = list(rights["rights"])
+            except:
+                standard_rights = rights["rights"].to_list()
 
             for right in standard_rights:
                 aces.append(
@@ -1052,22 +1055,15 @@ class ADExplorerSnapshot(object):
                         'type': 'Unknown',
                         'principal': sid
                     }
-            standard_rights = rights["rights"]#.to_list()
 
-
-            cls = standard_rights.__class__
-
-            members, _ = enum._decompose(cls, standard_rights._value_)
-            filtered_members = []
-            for member in members:
-#                if str(member) in ["Operator","Auditor"]:
-#                    continue
-                if str(member) == str(member.value):
-                    continue
-                filtered_members.append(member)
+            try:
+                standard_rights = list(rights["rights"])
+            except:
+                standard_rights = rights["rights"].to_list()
             
 
-            for right in filtered_members:
+            for right in standard_rights:
+                print(right)
                 if not principal_type == "Computer":
                     aces.append(
                         {
