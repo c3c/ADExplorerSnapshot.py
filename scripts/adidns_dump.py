@@ -1,3 +1,7 @@
+# Script to dump ADIDNS records
+# note: Supports legacy DNS zones only. Naming contexts for (Domain|Forest)DnsZones are not being saved in the snapshot
+# author: dust-life
+
 from adexpsnapshot import ADExplorerSnapshot
 import pwnlib.term, pwnlib.log, logging
 from bloodhound.ad.utils import ADUtils
