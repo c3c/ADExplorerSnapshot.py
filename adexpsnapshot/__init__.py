@@ -1063,7 +1063,6 @@ class ADExplorerSnapshot(object):
             
 
             for right in standard_rights:
-                print(right)
                 if not principal_type == "Computer":
                     aces.append(
                         {
