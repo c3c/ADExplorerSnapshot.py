@@ -49,6 +49,9 @@ log.term_mode = pwnlib.term.term_mode
 ades = ADExplorerSnapshot(args.snapshot, ".", log)
 ades.preprocessCached()
 
+# Get snapshot time
+snapshot_time = datetime.fromtimestamp(ades.snap.header.filetimeUnix, tz=timezone.utc)
+
 # Out streams
 out_computers = []
 out_active_servers = []
@@ -72,7 +75,7 @@ plaintext_pwd_attributes = ['UserPassword','UnixUserPassword','unicodePwd','msSF
 # Add headers
 out_computers.append("samaccountname||dnshostname||description||distinguishedName||operatingsystem||operatingsystemversion||useraccountcontrol||lastlogontimestamp||logoncount||pwdlastset||objectsid||memberof")
 out_active_servers.append("samaccountname||dnshostname||operatingsystem||operatingsystemversion||description||lastlogontimestamp")
-out_users.append("samaccountname||distinguishedName||description||useraccountcontrol||lastlogontimestamp||logoncount||pwdlastset||badpwdcount||badpasswordtime||objectsid||memberof")
+out_users.append("samaccountname||distinguishedName||description||useraccountcontrol||lastlogontimestamp||logoncount||pwdlastset||badpwdcount||badpasswordtime||objectsid||memberof||msds_allowedtoactonbehalfofotheridentity||title")
 out_groups.append("cn||samaccountname||distinguishedName||description||objectsid||member||memberof")
 out_sccm.append("mssmsmpname||dnshostname||distinguishedname||mssmssitecode||mssmsversion")
 out_printers.append("name||uncname||distinguishedname||servername||location||drivername||driverversion")
@@ -105,8 +108,7 @@ for idx,obj in enumerate(ades.snap.objects):
         
         # Active servers
         if operatingsystem and 'server' in operatingsystem.lower():
-            thirty_days_ago = datetime.now(timezone.utc) - timedelta(days=30)
-            if lastlogontimestamp > thirty_days_ago:
+            if lastlogontimestamp is not None and (snapshot_time - lastlogontimestamp) <= timedelta(days=30):
                 out_active_servers.append(f"{samaccountname}||{dnshostname}||{operatingsystem}||{operatingsystemversion}||{description}||{lastlogontimestamp}")
         
         # LAPS
@@ -143,7 +145,8 @@ for idx,obj in enumerate(ades.snap.objects):
         objectsid = ADUtils.get_entry_property(obj, 'objectsid')
         memberof = ADUtils.get_entry_property(obj, 'memberof')
         msds_allowedtoactonbehalfofotheridentity = ADUtils.get_entry_property(obj, 'msds-allowedtoactonbehalfofotheridentity')
-        
+        title = ADUtils.get_entry_property(obj, 'title')
+
         # Check for asreproast
         if useraccountcontrol is not None and useraccountcontrol & 4194304:
             out_asreproast.append(f"{samaccountname}||{distinguishedName}||{lastlogontimestamp}")
@@ -162,7 +165,7 @@ for idx,obj in enumerate(ades.snap.objects):
         if useraccountcontrol is not None and useraccountcontrol & 32:
             out_pwdnotreqd.append(f"{samaccountname}||{distinguishedName}||{useraccountcontrol}||{logoncount}")
 
-        out_users.append(f"{samaccountname}||{distinguishedName}||{description}||{useraccountcontrol}||{lastlogontimestamp}||{logoncount}||{pwdlastset}||{badpwdcount}||{badpasswordtime}||{objectsid}||{memberof}||{msds_allowedtoactonbehalfofotheridentity}")
+        out_users.append(f"{samaccountname}||{distinguishedName}||{description}||{useraccountcontrol}||{lastlogontimestamp}||{logoncount}||{pwdlastset}||{badpwdcount}||{badpasswordtime}||{objectsid}||{memberof}||{msds_allowedtoactonbehalfofotheridentity}||{title}")
         
     # get groups
     elif object_resolved['type'] == 'Group':
