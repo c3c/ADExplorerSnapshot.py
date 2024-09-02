@@ -193,12 +193,12 @@ class ADExplorerSnapshot(object):
             # create sid cache
             objectSid = ADUtils.get_entry_property(obj, 'objectSid')
             if objectSid:
-                self.sidcache[objectSid] = idx
+                self.sidcache[str(objectSid)] = idx
 
             # create dn cache
             distinguishedName = ADUtils.get_entry_property(obj, 'distinguishedName')
             if distinguishedName:
-                self.dncache[distinguishedName] = idx
+                self.dncache[str(distinguishedName)] = idx
 
             # get domains
             if 'domain' in obj.classes:
@@ -206,29 +206,29 @@ class ADExplorerSnapshot(object):
                     if self.log:
                         self.log.warn("Multiple domains in snapshot(?)")
                 else:
-                    self.rootdomain = distinguishedName
-                    self.domains[distinguishedName] = idx
+                    self.rootdomain = str(distinguishedName)
+                    self.domains[str(distinguishedName)] = idx
 
             # get forest domains
             if 'crossref' in obj.classes:
                 if ADUtils.get_entry_property(obj, 'systemFlags', 0) & 2 == 2:
                     ncname = ADUtils.get_entry_property(obj, 'nCName')
                     if ncname and ncname not in self.domains:
-                        self.domains[ncname] = idx
+                        self.domains[str(ncname)] = idx
 
             # get computers
             if ADUtils.get_entry_property(obj, 'sAMAccountType', -1) == 805306369:
                 dnshostname = ADUtils.get_entry_property(obj, 'dNSHostname')
                 if dnshostname:
-                    self.computersidcache[dnshostname] = objectSid
+                    self.computersidcache[str(dnshostname)] = str(objectSid)
 
             # get all cert templates
             if 'pkienrollmentservice' in obj.classes:
-                name = ADUtils.get_entry_property(obj, 'name')
+                name = str(ADUtils.get_entry_property(obj, 'name'))
                 if ADUtils.get_entry_property(obj, 'certificateTemplates'):
                     templates = ADUtils.get_entry_property(obj, 'certificateTemplates')
                     for template in templates:
-                        self.certtemplates[template].add(name)
+                        self.certtemplates[str(template)].add(name)
 
             # get dcs
             if ADUtils.get_entry_property(obj, 'userAccountControl', 0) & 0x2000 == 0x2000:
