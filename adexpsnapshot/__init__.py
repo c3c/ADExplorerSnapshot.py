@@ -303,6 +303,7 @@ class ADExplorerSnapshot(object):
                 "distinguishedname": ADUtils.get_entry_property(self.domain_object, 'distinguishedName'),
                 "description": ADUtils.get_entry_property(self.domain_object, 'description', ''),
                 "functionallevel": functional_level,
+                "Machine Account Quota": ADUtils.get_entry_property(self.domain_object, 'ms-DS-MachineAccountQuota'),
                 "highvalue": True,
                 "whencreated": ADUtils.get_entry_property(self.domain_object, 'whencreated', default=0)
             },
