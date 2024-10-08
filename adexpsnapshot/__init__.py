@@ -303,7 +303,10 @@ class ADExplorerSnapshot(object):
                 "distinguishedname": ADUtils.get_entry_property(self.domain_object, 'distinguishedName'),
                 "description": ADUtils.get_entry_property(self.domain_object, 'description', ''),
                 "functionallevel": functional_level,
+                "Machine Account Quota": ADUtils.get_entry_property(self.domain_object, 'ms-DS-MachineAccountQuota'),
                 "highvalue": True,
+                "isaclprotected": False,
+                "collected": True,
                 "whencreated": ADUtils.get_entry_property(self.domain_object, 'whencreated', default=0)
             },
             "Trusts": [],
@@ -349,32 +352,17 @@ class ADExplorerSnapshot(object):
             'ObjectIdentifier': ADUtils.get_entry_property(entry, 'objectsid'),
             'AllowedToAct': [],
             'PrimaryGroupSID': MembershipEnumerator.get_primary_membership(membership_entry),
-            'LocalAdmins': {
-                'Collected': False,
-                'FailureReason': None,
-                'Results': []
-            },
-            'PSRemoteUsers': {
-                'Collected': False,
-                'FailureReason': None,
-                'Results': []
-            },
+            'ContainedBy': None,
+            'DumpSMSAPassword': [],
             'Properties': {
                 'name': hostname.upper(),
                 'domainsid': self.domainsid,
                 'domain': self.domainname.upper(),
+                'highvalue': False,
                 'distinguishedname': distinguishedName
             },
-            'RemoteDesktopUsers': {
-                'Collected': False,
-                'FailureReason': None,
-                'Results': []
-            },
-            'DcomUsers': {
-                'Collected': False,
-                'FailureReason': None,
-                'Results': []
-            },
+            'LocalGroups': [],
+            'UserRights': [],
             'PrivilegedSessions': {
                 'Collected': False,
                 'FailureReason': None,
@@ -407,17 +395,17 @@ class ADExplorerSnapshot(object):
         props['haslaps'] = ADUtils.get_entry_property(entry, 'ms-mcs-admpwdexpirationtime', 0) != 0
 
         props['lastlogon'] = ADUtils.win_timestamp_to_unix(
-            ADUtils.get_entry_property(entry, 'lastlogon', default=0, raw=True)
+            ADUtils.get_entry_property(entry, 'lastlogon', default=-1, raw=True)
         )
 
         props['lastlogontimestamp'] = ADUtils.win_timestamp_to_unix(
-            ADUtils.get_entry_property(entry, 'lastlogontimestamp', default=0, raw=True)
+            ADUtils.get_entry_property(entry, 'lastlogontimestamp', default=-1, raw=True)
         )
         if props['lastlogontimestamp'] == 0:
             props['lastlogontimestamp'] = -1
 
         props['pwdlastset'] = ADUtils.win_timestamp_to_unix(
-            ADUtils.get_entry_property(entry, 'pwdLastSet', default=0, raw=True)
+            ADUtils.get_entry_property(entry, 'pwdLastSet', default=-1, raw=True)
         )
 
         props['whencreated'] = ADUtils.get_entry_property(entry, 'whencreated', default=0)
@@ -730,10 +718,12 @@ class ADExplorerSnapshot(object):
             "AllowedToDelegate": [],
             "ObjectIdentifier": ADUtils.get_entry_property(entry, 'objectSid'),
             "PrimaryGroupSID": MembershipEnumerator.get_primary_membership(membership_entry),
+            "ContainedBy": None,
             "Properties": {
                 "name": resolved_entry['principal'],
                 "domain": domain.upper(),
                 "domainsid": self.domainsid,
+                "highvalue": False,
                 "distinguishedname": distinguishedName,
                 "unconstraineddelegation": ADUtils.get_entry_property(entry, 'userAccountControl', default=0) & 0x00080000 == 0x00080000,
                 "trustedtoauth": ADUtils.get_entry_property(entry, 'userAccountControl', default=0) & 0x01000000 == 0x01000000,
@@ -874,12 +864,14 @@ class ADExplorerSnapshot(object):
             "Properties": {
                 "domain": self.domainname.upper(),
                 "domainsid": self.domainsid,
-                "name": "NT AUTHORITY@%s" % self.domainname.upper()
+                "name": "NT AUTHORITY@%s" % self.domainname.upper(),
+                "highvalue": False,
             },
             "Aces": [],
             "SPNTargets": [],
             "HasSIDHistory": [],
             "IsDeleted": False,
+            "ContainedBy": None,
             "IsACLProtected": False,
         }
         self.writeQueues["users"].put(user)
@@ -893,10 +885,12 @@ class ADExplorerSnapshot(object):
                 "domainsid": self.domainsid,
                 "name": "ENTERPRISE DOMAIN CONTROLLERS@%s" % self.domainname.upper()
             },
+            "ContainedBy": None,
             "Members": [],
             "Aces": [],
             "IsDeleted": False,
-            "IsACLProtected": False
+            "IsACLProtected": False,
+            "ContainedBy": None
         }
 
         for dc in self.domaincontrollers:
@@ -921,7 +915,8 @@ class ADExplorerSnapshot(object):
             "Members": [],
             "Aces": [],
             "IsDeleted": False,
-            "IsACLProtected": False
+            "IsACLProtected": False,
+            "ContainedBy": None
         }
         self.writeQueues["groups"].put(evgroup)
 
@@ -936,7 +931,8 @@ class ADExplorerSnapshot(object):
             "Members": [],
             "Aces": [],
             "IsDeleted": False,
-            "IsACLProtected": False
+            "IsACLProtected": False,
+            "ContainedBy": None
         }
         self.writeQueues["groups"].put(augroup)
 
@@ -951,7 +947,8 @@ class ADExplorerSnapshot(object):
             "Members": [],
             "Aces": [],
             "IsDeleted": False,
-            "IsACLProtected": False
+            "IsACLProtected": False,
+            "ContainedBy": None
         }
         self.writeQueues["groups"].put(iugroup)
 
