@@ -655,7 +655,7 @@ class ADExplorerSnapshot(object):
             'External': 3,
             'Unknown': 4,
         }
-        trust['TrustType'] = trust_directions[trust['TrustType']]
+        trust['TrustType'] = trust_types[trust['TrustType']]
         self.numTrusts += 1
         self.trusts.append(trust)
         return True
