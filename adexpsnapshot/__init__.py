@@ -670,7 +670,7 @@ class ADExplorerSnapshot(object):
                 "domainsid": self.domainsid,
                 "highvalue": is_highvalue(sid),
                 "name": resolved_entry['principal'],
-                "distinguishedname": distinguishedName
+                "distinguishedname": distinguishedName,
             },
             "Members": [],
             "Aces": [],
@@ -682,6 +682,7 @@ class ADExplorerSnapshot(object):
         group['Properties']['admincount'] = ADUtils.get_entry_property(entry, 'adminCount', default=0) == 1
         group['Properties']['description'] = ADUtils.get_entry_property(entry, 'description', '')
         group['Properties']['whencreated'] = ADUtils.get_entry_property(entry, 'whencreated', default=0)
+        group['Properties']['samaccountname'] = ADUtils.get_entry_property(entry, 'samaccountname')
 
         for member in ADUtils.get_entry_property(entry, 'member', []):
             resolved_member = self.get_membership(member)
