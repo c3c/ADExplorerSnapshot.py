@@ -674,7 +674,8 @@ class ADExplorerSnapshot(object):
             },
             "Members": [],
             "Aces": [],
-            "IsDeleted": ADUtils.get_entry_property(entry, 'isDeleted', default=False)
+            "IsDeleted": ADUtils.get_entry_property(entry, 'isDeleted', default=False),
+            "IsACLProtected": False,
         }
         if sid in ADUtils.WELLKNOWN_SIDS:
             group['ObjectIdentifier'] = '%s-%s' % (self.domainname.upper(), sid)
