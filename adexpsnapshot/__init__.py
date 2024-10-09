@@ -321,7 +321,8 @@ class ADExplorerSnapshot(object):
                 "PSRemoteUsers": [],
                 "RemoteDesktopUsers": []
             },
-            "IsDeleted": False
+            "IsDeleted": False,
+            "IsACLProtected": False
         }
 
         aces = self.parse_acl(domain, 'domain', ADUtils.get_entry_property(self.domain_object, 'nTSecurityDescriptor', raw=True))
@@ -734,7 +735,8 @@ class ADExplorerSnapshot(object):
             "Aces": [],
             "SPNTargets": [],
             "HasSIDHistory": [],
-            "IsDeleted": ADUtils.get_entry_property(entry, 'isDeleted', default=False)
+            "IsDeleted": ADUtils.get_entry_property(entry, 'isDeleted', default=False),
+            "IsACLProtected": False,
         }
 
         MembershipEnumerator.add_user_properties(user, entry)
