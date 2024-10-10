@@ -764,11 +764,20 @@ class ADExplorerSnapshot(object):
                     continue
                 try:
                     sid = self.computersidcache[target]
-                    user['AllowedToDelegate'].append(sid)
+                    delegateObj = {
+                        "ObjectIdentifier":sid,
+                        "ObjectType": self.resolve_sid(sid)['ObjectType']
+                    }
+                    
+                    user['AllowedToDelegate'].append(delegateObj)
                 except KeyError:
-                    if '.' in target:
-                        user['AllowedToDelegate'].append(target.upper())
-
+                    self.log.warn('Unable to find sid for delegation target: %s', host)
+                    #if '.' in target:
+                    #    user['AllowedToDelegate'].append(target.upper())
+                    # TODO: Figure out what to do here
+                    pass
+            # Remove bad allowedtodelegate prop
+            del user['Properties']['allowedtodelegate']
         # Parse SID history - in this case, will be all unknown(?)
         if len(user['Properties']['sidhistory']) > 0:
             for historysid in user['Properties']['sidhistory']:
