@@ -657,7 +657,7 @@ class ADExplorerSnapshot(object):
         trust['TrustDirection'] = trust_directions[trust['TrustDirection']]
 
         trust_types = {
-            0: 'ParentChild'
+            0: 'ParentChild',
             1: 'CrossLink',
             2: 'Forest',
             3: 'External',
