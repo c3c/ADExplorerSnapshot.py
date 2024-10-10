@@ -429,12 +429,20 @@ class ADExplorerSnapshot(object):
                 continue
             try:
                 sid = self.computersidcache[target]
-                computer['AllowedToDelegate'].append(sid)
+                delegateObj = {
+                    "ObjectIdentifier":sid,
+                    "ObjectType": self.resolve_sid(sid)['ObjectType']
+                }
+                computer['AllowedToDelegate'].append(delegateObj)
             except KeyError:
                 if '.' in target:
-                    computer['AllowedToDelegate'].append(target.upper())
-        if len(delegatehosts) > 0:
-            props['allowedtodelegate'] = delegatehosts
+                    self.log.warn('Unable to find sid for delegation target: %s', host)
+                    # TODO: figure out what to do here
+                    #computer['AllowedToDelegate'].append(target.upper())
+                    pass
+        # deprecated
+        #if len(delegatehosts) > 0:
+        #    props['allowedtodelegate'] = delegatehosts
 
 
         # Process resource-based constrained delegation
