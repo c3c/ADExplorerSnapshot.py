@@ -15,7 +15,7 @@ setup(name='ADExplorerSnapshot',
                 'adexpsnapshot.parser',
       ],
       license='MIT',
-      install_requires=['bloodhound>=1.7.2','dissect.cstruct>=2.0','frozendict','requests','pwntools>=4.5.0','certipy-ad>=4.4.0'],
+      install_requires=['bloodhound @ git+https://github.com/dirkjanm/BloodHound.py@bloodhound-ce','dissect.cstruct>=2.0','frozendict','requests','pwntools>=4.5.0','certipy-ad>=4.4.0'],
       classifiers=[
         'Environment :: Console',
         'Intended Audience :: Information Technology',
