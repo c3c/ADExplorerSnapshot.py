@@ -650,18 +650,18 @@ class ADExplorerSnapshot(object):
         
         trust = domtrust.to_output()
         trust_directions = {
-            'Inbound': 0x01,
-            'Outbound': 0x02,
-            'Bidirectional': 0x03,
+            1: 'Inbound',
+            2: 'Outbound',
+            3: 'Bidirectional',
         }
         trust['TrustDirection'] = trust_directions[trust['TrustDirection']]
 
         trust_types = {
-            'ParentChild': 0,
-            'CrossLink': 1,
-            'Forest': 2,
-            'External': 3,
-            'Unknown': 4,
+            0: 'ParentChild'
+            1: 'CrossLink',
+            2: 'Forest',
+            3: 'External',
+            4: 'Unknown',
         }
         trust['TrustType'] = trust_types[trust['TrustType']]
         self.numTrusts += 1
