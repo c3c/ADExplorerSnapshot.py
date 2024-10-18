@@ -66,6 +66,7 @@ out_unconstraineddelegation = []
 out_userspn = []
 out_plaintextpwd = []
 out_pwdnotreqd = []
+out_precreated = []
 
 
 # Attributes to check for plaintext passwords
@@ -86,6 +87,7 @@ out_unconstraineddelegation.append("samaccountname||dnshostname||distinguishedNa
 out_userspn.append("samaccountname||distinguishedName||serviceprincipalname||pwdlastset||logoncount")
 out_plaintextpwd.append("samaccountname||distinguishedName||attribute")
 out_pwdnotreqd.append("samaccountname||distinguishedName||useraccountcontrol||logoncount")
+out_precreated.append("samaccountname||dnshostname||useraccountcontrol")
 
 prog = log.progress(f"Going through objects and outputting to files", rate=0.1)    
 for idx,obj in enumerate(ades.snap.objects):
@@ -128,6 +130,10 @@ for idx,obj in enumerate(ades.snap.objects):
         # Check for pwdnotreqd
         if useraccountcontrol is not None and useraccountcontrol & 32:
             out_pwdnotreqd.append(f"{samaccountname}||{distinguishedName}||{useraccountcontrol}||{logoncount}")
+        
+        # Check for pre created computer accounts 
+        if useraccountcontrol == 4128:
+            out_precreated.append(f"{samaccountname}||{dnshostname}||{useraccountcontrol}")
 
         out_computers.append(f"{samaccountname}||{dnshostname}||{description}||{distinguishedName}||{operatingsystem}||{operatingsystemversion}||{useraccountcontrol}||{lastlogontimestamp}||{logoncount}||{pwdlastset}||{objectsid}||{memberof}||{msds_allowedtoactonbehalfofotheridentity}")
 
@@ -261,5 +267,9 @@ if args.output_folder:
     if out_pwdnotreqd:
         outFile_pwdnotreqd = open(Path(args.output_folder / "pwdnotreqd.txt"), "w")
         outFile_pwdnotreqd.write(os.linesep.join(out_pwdnotreqd))
+
+    if out_precreated:
+        outFile_precreated = open(Path(args.output_folder / "precreated.txt"), "w")
+        outFile_precreated.write(os.linesep.join(out_precreated))
 
     log.info(f"Output written to files in {args.output_folder}")
