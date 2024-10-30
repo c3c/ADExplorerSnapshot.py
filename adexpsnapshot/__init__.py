@@ -363,6 +363,10 @@ class ADExplorerSnapshot(object):
                 'distinguishedname': distinguishedName
             },
             'LocalGroups': [],
+            'LocalAdmins': {'Collected': False, 'FailureReason': None, 'Results': []},
+            'RemoteDesktopUsers': {'Collected': False, 'FailureReason': None, 'Results': []},
+            'DcomUsers': {'Collected': False, 'FailureReason': None, 'Results': []},
+            'PSRemoteUsers': {'Collected': False, 'FailureReason': None, 'Results': []},
             'UserRights': [],
             'PrivilegedSessions': {
                 'Collected': False,
@@ -655,7 +659,10 @@ class ADExplorerSnapshot(object):
             2: 'Outbound',
             3: 'Bidirectional',
         }
-        trust['TrustDirection'] = trust_directions[trust['TrustDirection']]
+
+        # checks to see if TrustDirection is already resolved
+        if(trust['TrustDirection'] not in trust_directions.values()):
+            trust['TrustDirection'] = trust_directions[trust['TrustDirection']]
 
         trust_types = {
             0: 'ParentChild',
@@ -664,7 +671,10 @@ class ADExplorerSnapshot(object):
             3: 'External',
             4: 'Unknown',
         }
-        trust['TrustType'] = trust_types[trust['TrustType']]
+
+        # checks to see if TrustType is already resolved
+        if(trust['TrustType'] not in trust_types.values()):
+            trust['TrustType'] = trust_types[trust['TrustType']]
         self.numTrusts += 1
         self.trusts.append(trust)
         return True
