@@ -363,6 +363,10 @@ class ADExplorerSnapshot(object):
                 'distinguishedname': distinguishedName
             },
             'LocalGroups': [],
+            'LocalAdmins': {'Collected': False, 'FailureReason': None, 'Results': []},
+            'RemoteDesktopUsers': {'Collected': False, 'FailureReason': None, 'Results': []},
+            'DcomUsers': {'Collected': False, 'FailureReason': None, 'Results': []},
+            'PSRemoteUsers': {'Collected': False, 'FailureReason': None, 'Results': []},
             'UserRights': [],
             'PrivilegedSessions': {
                 'Collected': False,
