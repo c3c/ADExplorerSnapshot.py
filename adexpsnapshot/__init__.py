@@ -664,7 +664,10 @@ class ADExplorerSnapshot(object):
             3: 'External',
             4: 'Unknown',
         }
-        trust['TrustType'] = trust_types[trust['TrustType']]
+
+        # checks to see if TrustType is already resolved
+        if(trust['TrustType'] not in trust_types.values()):
+            trust['TrustType'] = trust_types[trust['TrustType']]
         self.numTrusts += 1
         self.trusts.append(trust)
         return True
