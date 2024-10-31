@@ -201,7 +201,7 @@ class ADExplorerSnapshot(object):
                 self.dncache[str(distinguishedName)] = idx
 
             # get domains
-            if 'domain' in obj.classes:
+            if hasattr(obj, 'classes') and 'domain' in obj.classes:
                 if self.rootdomain is not None: # is it possible to find multiple?
                     if self.log:
                         self.log.warn("Multiple domains in snapshot(?)")
@@ -722,7 +722,7 @@ class ADExplorerSnapshot(object):
         return True
 
     def processUsers(self, entry):
-        if not (('user' in entry.classes and 'person' == entry.category) or 'msds-groupmanagedserviceaccount' in entry.classes):
+        if not ((hasattr(entry, 'classes') and 'user' in entry.classes and 'person' == entry.category) or 'msds-groupmanagedserviceaccount' in entry.classes):
             return
 
         distinguishedName = ADUtils.get_entry_property(entry, 'distinguishedName')
