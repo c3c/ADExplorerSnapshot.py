@@ -655,7 +655,17 @@ class ADExplorerSnapshot(object):
             2: 'Outbound',
             3: 'Bidirectional',
         }
-        trust['TrustDirection'] = trust_directions[trust['TrustDirection']]
+        
+        try:
+            trust['TrustDirection'] = trust_directions[trust['TrustDirection']]
+        except KeyError:
+            # Try looking up by Value instead of Key
+            for k, v in trust_directions.items():
+                if v == trust['TrustDirection']:
+                    trust['TrustDirection'] = v
+                    break
+        except Exception as e:
+            self.log.error('Error processing trust direction: %s', e)
 
         trust_types = {
             0: 'ParentChild',
@@ -664,7 +674,16 @@ class ADExplorerSnapshot(object):
             3: 'External',
             4: 'Unknown',
         }
-        trust['TrustType'] = trust_types[trust['TrustType']]
+        
+        try:
+            trust['TrustType'] = trust_types[trust['TrustType']]
+        except KeyError:
+            # Try looking up by Value instead of Key
+            for k, v in trust_types.items():
+                if v == trust['TrustType']:
+                    trust['TrustType'] = v
+                    break
+
         self.numTrusts += 1
         self.trusts.append(trust)
         return True
