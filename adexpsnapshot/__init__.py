@@ -650,21 +650,6 @@ class ADExplorerSnapshot(object):
                                 ADUtils.get_entry_property(entry, 'trustAttributes'), ADUtils.get_entry_property(entry, 'securityIdentifier'))
         
         trust = domtrust.to_output()
-        trust_directions = {
-            1: 'Inbound',
-            2: 'Outbound',
-            3: 'Bidirectional',
-        }
-        trust['TrustDirection'] = trust_directions[trust['TrustDirection']]
-
-        trust_types = {
-            0: 'ParentChild',
-            1: 'CrossLink',
-            2: 'Forest',
-            3: 'External',
-            4: 'Unknown',
-        }
-        trust['TrustType'] = trust_types[trust['TrustType']]
         self.numTrusts += 1
         self.trusts.append(trust)
         return True
