@@ -57,6 +57,7 @@ out_computers = []
 out_active_servers = []
 out_users = []
 out_sccm = []
+out_sccm_potential_pxe = [] 
 out_groups = []
 out_printers = []
 out_shares = []
@@ -67,7 +68,7 @@ out_userspn = []
 out_plaintextpwd = []
 out_pwdnotreqd = []
 out_precreated = []
-
+out_sql_systems = []
 
 # Attributes to check for plaintext passwords
 plaintext_pwd_attributes = ['UserPassword','UnixUserPassword','unicodePwd','msSFU30Password','orclCommonAttribute','os400Password']
@@ -79,6 +80,7 @@ out_active_servers.append("samaccountname||dnshostname||operatingsystem||operati
 out_users.append("samaccountname||distinguishedName||description||useraccountcontrol||lastlogontimestamp||logoncount||pwdlastset||badpwdcount||badpasswordtime||objectsid||memberof||msds_allowedtoactonbehalfofotheridentity||title")
 out_groups.append("cn||samaccountname||distinguishedName||description||objectsid||member||memberof")
 out_sccm.append("mssmsmpname||dnshostname||distinguishedname||mssmssitecode||mssmsversion")
+out_sccm_potential_pxe.append("distinguishedname")
 out_printers.append("name||uncname||distinguishedname||servername||location||drivername||driverversion")
 out_shares.append("name||uncname||distinguishedname")
 out_laps.append("dnshostname||ms_mcs_admpwd||ms_mcs_admpwdexpirationtime")
@@ -87,7 +89,8 @@ out_unconstraineddelegation.append("samaccountname||dnshostname||distinguishedNa
 out_userspn.append("samaccountname||distinguishedName||serviceprincipalname||pwdlastset||logoncount")
 out_plaintextpwd.append("samaccountname||distinguishedName||attribute")
 out_pwdnotreqd.append("samaccountname||distinguishedName||useraccountcontrol||logoncount")
-out_precreated.append("samaccountname||dnshostname||useraccountcontrol")
+out_precreated.append("samaccountname||useraccountcontrol||pwdlastset||whencreated||description")
+out_sql_systems.append("samaccountname||dnshostname||operatingsystem||operatingsystemversion||description||lastlogontimestamp")
 
 prog = log.progress(f"Going through objects and outputting to files", rate=0.1)    
 for idx,obj in enumerate(ades.snap.objects):
@@ -102,12 +105,20 @@ for idx,obj in enumerate(ades.snap.objects):
         operatingsystemversion = ADUtils.get_entry_property(obj, 'operatingsystemversion')
         useraccountcontrol = ADUtils.get_entry_property(obj, 'useraccountcontrol')
         lastlogontimestamp = convert_ad_timestamp(ADUtils.get_entry_property(obj, 'lastlogontimestamp'))
-        logoncount = ADUtils.get_entry_property(obj, 'logoncount')
+        whencreated = convert_ad_timestamp(ADUtils.get_entry_property(obj, 'whencreated'))
         pwdlastset = convert_ad_timestamp(ADUtils.get_entry_property(obj, 'pwdlastset'))
         objectsid = ADUtils.get_entry_property(obj, 'objectsid')
         memberof = ADUtils.get_entry_property(obj, 'memberof')
         msds_allowedtoactonbehalfofotheridentity = ADUtils.get_entry_property(obj, 'msds-allowedtoactonbehalfofotheridentity')
         
+        if serviceprincipalname:
+            # Ensure serviceprincipalname is a list or iterable before checking for "MSSQLSvc"
+            if isinstance(serviceprincipalname, str):
+                serviceprincipalname = [serviceprincipalname] 
+            
+            if any("MSSQLSvc" in spn for spn in serviceprincipalname): # Can easily add more things to output based on SPN
+                out_sql_systems.append(f"{samaccountname}||{dnshostname}||{operatingsystem}||{operatingsystemversion}||{description}||{lastlogontimestamp}")
+
         # Active servers
         if operatingsystem and 'server' in operatingsystem.lower():
             if lastlogontimestamp is not None and (snapshot_time - lastlogontimestamp) <= timedelta(days=30):
@@ -132,9 +143,9 @@ for idx,obj in enumerate(ades.snap.objects):
             out_pwdnotreqd.append(f"{samaccountname}||{distinguishedName}||{useraccountcontrol}||{logoncount}")
         
         # Check for pre created computer accounts 
-        if useraccountcontrol == 4128:
-            out_precreated.append(f"{samaccountname}||{dnshostname}||{useraccountcontrol}")
-
+        if not lastlogontimestamp:
+            out_precreated.append(f"{samaccountname}||{useraccountcontrol}||{pwdlastset}||{whencreated}||{description}")
+        
         out_computers.append(f"{samaccountname}||{dnshostname}||{description}||{distinguishedName}||{operatingsystem}||{operatingsystemversion}||{useraccountcontrol}||{lastlogontimestamp}||{logoncount}||{pwdlastset}||{objectsid}||{memberof}||{msds_allowedtoactonbehalfofotheridentity}")
 
     # # get users
@@ -185,6 +196,10 @@ for idx,obj in enumerate(ades.snap.objects):
         out_groups.append(f"{cn}||{samaccountname}||{distinguishedName}||{description}||{objectsid}||{member}||{memberof}")
     
     elif object_resolved['type'] == 'Base':
+        if "connectionPoint" in ADUtils.get_entry_property(obj, 'objectClass', "0"): 
+            if "-Remote-Installation-Services" in ADUtils.get_entry_property(obj, 'cn', "0"): 
+                _, server_dn = ADUtils.get_entry_property(obj, 'distinguishedName', "0").split(',', 1)
+                out_sccm_potential_pxe.append(server_dn)
         # get sccm mp
         if "mSSMSManagementPoint" in ADUtils.get_entry_property(obj, 'objectClass', "0"): 
             mssmsmpname = ADUtils.get_entry_property(obj, 'mssmsmpname')
@@ -271,5 +286,13 @@ if args.output_folder:
     if out_precreated:
         outFile_precreated = open(Path(args.output_folder / "precreated.txt"), "w")
         outFile_precreated.write(os.linesep.join(out_precreated))
+
+    if out_sccm_potential_pxe:
+        outFile_sccm_potential_pxe = open(Path(args.output_folder / "sccm_potential_pxe.txt"), "w")
+        outFile_sccm_potential_pxe.write(os.linesep.join(out_sccm_potential_pxe))
+
+    if out_sql_systems:
+        outFile_sql_systems = open(Path(args.output_folder / "sql_systems.txt"), "w")
+        outFile_sql_systems.write(os.linesep.join(out_sql_systems))
 
     log.info(f"Output written to files in {args.output_folder}")
