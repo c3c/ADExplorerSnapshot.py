@@ -80,7 +80,7 @@ class AttributeDict(UserDict):
         self._dico = CaseInsensitiveDict()
         
     def __getitem__(self,  key):
-        ret = self.getAttribute(key, raw=self.raw)
+        ret = self.attribute(key, raw=self.raw)
         if key.lower() == 'name': # hacked in to make resolve_ad_entry function work 
             return ret[0]
         return ret
@@ -96,8 +96,8 @@ class AttributeDict(UserDict):
 
         return self._dico
 
-    @functools.cached_property
-    def attribute(self, attrName, raw=False):
+    @functools.lru_cache
+    def getAttribute(self, attrName, raw=False):
         attrIndex = self.snap.propertyDict[attrName]
         prop = self.snap.properties[attrIndex]
 
