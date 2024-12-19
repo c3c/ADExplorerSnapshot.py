@@ -96,7 +96,6 @@ class AttributeDict(UserDict):
 
         return self._dico
 
-    @functools.lru_cache
     def getAttribute(self, attrName, raw=False):
         attrIndex = self.snap.propertyDict[attrName]
         prop = self.snap.properties[attrIndex]
