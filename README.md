@@ -1,6 +1,6 @@
 # ADExplorerSnapshot.py
 
-![Python 3.6+ compatible](https://img.shields.io/badge/python-%5E3.6-blue)
+![Python 3.8+ compatible](https://img.shields.io/badge/python-%5E3.8-blue)
 ![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)
 
 ADExplorerSnapshot.py is an AD Explorer snapshot parser. It is made as an ingestor for [BloodHound](https://bloodhound.readthedocs.io/), and also supports full-object dumping to NDJSON.
@@ -26,7 +26,7 @@ The ingestor for BloodHound only supports offline information collection from th
 
 ## Installation
 
-ADExplorerSnapshot.py supports Python 3.6+. Dependencies are managed via pip.
+ADExplorerSnapshot.py supports Python 3.8+. Dependencies are managed via pip.
 
 ```
 git clone https://github.com/c3c/ADExplorerSnapshot.py.git
