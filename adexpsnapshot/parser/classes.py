@@ -80,7 +80,7 @@ class AttributeDict(UserDict):
         self._dico = CaseInsensitiveDict()
         
     def __getitem__(self,  key):
-        ret = self.attribute(key, raw=self.raw)
+        ret = self.getAttribute(key, raw=self.raw)
         if key.lower() == 'name': # hacked in to make resolve_ad_entry function work 
             return ret[0]
         return ret
