@@ -78,9 +78,6 @@ class AttributeDict(UserDict):
         self.raw = raw
 
         self._dico = CaseInsensitiveDict()
-
-        self.getAttribute = functools.lru_cache()(self.getAttribute)
-
         
     def __getitem__(self,  key):
         ret = self.getAttribute(key, raw=self.raw)
@@ -99,7 +96,8 @@ class AttributeDict(UserDict):
 
         return self._dico
 
-    def getAttribute(self, attrName, raw=False):
+    @functools.cached_property
+    def attribute(self, attrName, raw=False):
         attrIndex = self.snap.propertyDict[attrName]
         prop = self.snap.properties[attrIndex]
 
@@ -201,13 +199,12 @@ class Object(WrapStruct):
         self.attributes = AttributeDict(self, raw=False)
         self.raw_attributes = AttributeDict(self, raw=True)
 
-        self.getObjectClasses = functools.lru_cache()(self.getObjectClasses)
-        self.getObjectCategory = functools.lru_cache()(self.getObjectCategory)
-
-    def getObjectClasses(self):
+    @functools.cached_property
+    def classes(self):
         return list(map(str.casefold, self.attributes.get('objectClass', [])))
 
-    def getObjectCategory(self):
+    @functools.cached_property
+    def category(self):
         catDN = self.attributes.get('objectCategory', None)
         if catDN is None:
             return None
@@ -218,9 +215,6 @@ class Object(WrapStruct):
             return catObj.className.lower()
         else:
             return None
-
-    classes = property(getObjectClasses)
-    category = property(getObjectCategory)
 
     # for easy compatibility with the bloodhound lib
     def __getitem__(self, key):
