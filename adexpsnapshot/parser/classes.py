@@ -200,7 +200,12 @@ class Object(WrapStruct):
 
     @functools.cached_property
     def classes(self):
-        return list(map(str.casefold, self.attributes.get('objectClass', [])))
+        try:
+            return list(map(str.casefold, self.attributes.get('objectClass', [])))
+        except Exception as e:
+            print("Error in resolving objectClass:")
+            print(e)
+        return []
 
     @functools.cached_property
     def category(self):
