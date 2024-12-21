@@ -183,8 +183,8 @@ class AttributeDict(UserDict):
                 values.append(descriptorBytes)
 
         else:
-            if self.log:
-                self.log.warn("Unhandled adsType: %s -> %d" % (attrName, attrType))
+            if self.snap.log:
+                self.snap.log.warn("Unhandled adsType: %s -> %d" % (attrName, attrType))
 
         return values
 
