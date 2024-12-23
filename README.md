@@ -95,5 +95,6 @@ Credits:
  - Cedric Van Bockhaven for implementation
  - Marat Nigmatullin for the idea
  - The FalconForce team for adding certificate template support
+ - Oddvar Moe (@api0cradle) for contributing various scripts
 
 Thanks to Deloitte for providing the environment in which this tool was developed.
