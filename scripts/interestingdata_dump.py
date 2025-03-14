@@ -110,6 +110,8 @@ for idx,obj in enumerate(ades.snap.objects):
         objectsid = ADUtils.get_entry_property(obj, 'objectsid')
         memberof = ADUtils.get_entry_property(obj, 'memberof')
         msds_allowedtoactonbehalfofotheridentity = ADUtils.get_entry_property(obj, 'msds-allowedtoactonbehalfofotheridentity')
+        serviceprincipalname = ADUtils.get_entry_property(obj, 'serviceprincipalname')
+        logoncount = ADUtils.get_entry_property(obj, 'logoncount')
         
         if serviceprincipalname:
             # Ensure serviceprincipalname is a list or iterable before checking for "MSSQLSvc"
