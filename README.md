@@ -20,6 +20,8 @@ In `BloodHound` output mode:
 
 In `Objects` output mode, all attributes for every object are parsed and outputted to NDJSON format.
 
+In `LDIF` output mode, all attributes for every object are parsed and outputted to LDIF format to be [parsed with BOFHound](https://github.com/coffeegist/bofhound/).
+
 ## Limitations
 
 The ingestor for BloodHound only supports offline information collection from the snapshot file and won't interact with systems on the network. That means features like session and localadmin collection are not available. GPO/OU collection is missing. The ingestor processes all data it possibly can from the snapshot (including ACLs), but will only output the JSON data that can be interpreted by BloodHound. You will only have the data available of the LDAP/DC that you ran the snapshot against.
@@ -37,9 +39,9 @@ pip3 install --user .
 ## Usage
 
 ```
-usage: ADExplorerSnapshot.py [-h] [-o OUTPUT] [-m {BloodHound,Objects}] snapshot
+usage: ADExplorerSnapshot.py [-h] [-o OUTPUT] [-m {BloodHound,Objects,LDIF}] snapshot
 
-ADExplorerSnapshot.py is an AD Explorer snapshot parser. It is made as an ingestor for BloodHound, and also supports full-object dumping to NDJSON.
+ADExplorerSnapshot.py is an AD Explorer snapshot parser. It is made as an ingestor for BloodHound, and also supports full-object dumping to NDJSON and LDIF.
 
 positional arguments:
   snapshot              Path to the snapshot .dat file.
@@ -49,9 +51,9 @@ optional arguments:
   -o OUTPUT, --output OUTPUT
                         Path to the *.json output folder. Folder will be created if it doesn't exist. 
                         Defaults to the current directory.
-  -m {BloodHound,Objects}, --mode {BloodHound,Objects}
+  -m {BloodHound,Objects,LDIF}, --mode {BloodHound,Objects,LDIF}
                         The output mode to use. Besides BloodHound JSON output files, it is possible
-                        to dump all objects with all attributes to NDJSON.
+                        to dump all objects with all attributes to NDJSON or LDIF formats.
                         Defaults to BloodHound output mode.
 ```
 
