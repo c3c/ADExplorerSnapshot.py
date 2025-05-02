@@ -20,7 +20,7 @@ In `BloodHound` output mode:
 
 In `Objects` output mode, all attributes for every object are parsed and outputted to NDJSON format.
 
-In `LDIF` output mode, all attributes for every object are parsed and outputted to LDIF format to be [parsed with BOFHound](https://github.com/coffeegist/bofhound/).
+In `LDIF` output mode, all attributes for every object are parsed and outputted to LDIF format. This format can then be [parsed with BOFHound](https://github.com/coffeegist/bofhound/).
 
 ## Limitations
 
@@ -98,5 +98,6 @@ Credits:
  - Marat Nigmatullin for the idea
  - The FalconForce team for adding certificate template support
  - Oddvar Moe (@api0cradle) for contributing various scripts
+ - Marc André Tanner (@martanne) for implementing LDIF output mode
 
 Thanks to Deloitte for providing the environment in which this tool was developed.
