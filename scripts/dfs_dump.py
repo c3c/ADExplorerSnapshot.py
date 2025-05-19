@@ -43,7 +43,7 @@ for target_list, link_path in dfs_pairs:
         except Exception as e:
             print(f'[-] {e}')
         else:
-            print(f'''\
---------------------------------------------------------------------------------
-Link path:   {link_path}
-Target list: {"\n             ".join(targets)}\n''')
+            joined_targets = '\n             '.join(targets)
+            print('--------------------------------------------------------------------------------')
+            print(f'Link path:   {link_path}')
+            print(f'Target list: {joined_targets}')
