@@ -27,7 +27,7 @@ from enum import Enum
 from typing import List
 
 class ADExplorerSnapshot(object):
-    OutputMode = Enum('OutputMode', ['BloodHound', 'Objects'])
+    OutputMode = Enum('OutputMode', ['BloodHound', 'Objects', 'LDIF'])
 
     def __init__(self, snapfile, outputfolder, log=None, snapshot_parser=None):
         self.log = log
@@ -102,6 +102,110 @@ class ADExplorerSnapshot(object):
             fh_out.close()
             result_q.task_done()
             
+        wq = queue.Queue()
+        results_worker = threading.Thread(target=write_worker, args=(wq, os.path.join(self.output, outputfile)))
+        results_worker.daemon = True
+        results_worker.start()
+
+        if self.log:
+            prog = self.log.progress("Collecting data", rate=0.1)
+
+        for idx, obj in enumerate(self.snap.objects):
+            wq.put((dict(obj.attributes.data)))
+
+            if self.log and self.log.term_mode:
+                prog.status(f"dumped {idx+1}/{self.snap.header.numObjects} objects")
+
+        if self.log:
+            prog.success(f"dumped {self.snap.header.numObjects} objects")
+
+        wq.put(None)
+        wq.join()
+
+        if self.log:
+            self.log.success(f"Output written to {outputfile}")
+
+    def outputLDIF(self):
+
+        import codecs, base64, datetime
+
+        outputfile = f"{self.snap.header.server}_{self.snap.header.filetimeUnix}_objects.ldif"
+
+        class LDIFEncoder:
+
+            timestamp_attributes = ['whenCreated', 'whenChanged', 'dSCorePropagationData' ]
+
+            def encode(self, obj):
+                if obj is None:
+                    return ""
+                elif isinstance(obj, dict):
+                    return self.encode_dict(obj)
+                elif isinstance(obj, list):
+                    return ", ".join(self.encode(item) for item in obj)
+                elif isinstance(obj, int):
+                    return str(obj if obj < 0x80000000 else obj - 0x100000000)
+                elif isinstance(obj, bytes):
+                    return base64.b64encode(obj).decode("ascii")
+                elif isinstance(obj, (str, float, bool)):
+                    return str(obj)
+                else:
+                    raise Exception(f"LDIFEncoder does not support objects of type {type(obj)}")
+
+            def encode_dict(self, obj):
+                lines = []
+                for key in sorted(obj.keys()):
+                    if key in LDIFEncoder.timestamp_attributes:
+                        encoded = self.encode_timestamp(obj[key], key)
+                    else:
+                        encoded = self.encode(obj[key])
+                    lines.append(f"{key}: {encoded}")
+                if len(lines):
+                    lines.append("")
+                return "\n".join(lines)
+
+            def encode_timestamp(self, value, attr=''):
+                try:
+                    if isinstance(value, list):
+                        if len(value) == 0:
+                            return "0"
+                        value = value[0]
+                    return datetime.datetime.fromtimestamp(value, datetime.UTC).strftime('%Y%m%d%H%M%S.0Z')
+                except:
+                    logging.warning(f"Failed to parse timestamp for attribute {attr}")
+                    return "0"
+
+        ldif_encoder = LDIFEncoder()
+
+        def write_worker(result_q, filename):
+            try:
+                fh_out = codecs.open(filename, 'w', 'utf-8')
+            except:
+                logging.warning('Could not write file: %s', filename)
+                result_q.task_done()
+                return
+
+            wroteOnce = False
+            while True:
+                data = result_q.get()
+
+                if data is None:
+                    break
+
+                if not wroteOnce:
+                    wroteOnce = True
+                else:
+                    fh_out.write('--------------------\n')
+
+                try:
+                    encoded_member = ldif_encoder.encode(data)
+                    fh_out.write(encoded_member)
+                except TypeError:
+                    logging.error('Data error {0}, could not convert data to LDIF'.format(repr(data)))
+                result_q.task_done()
+
+            fh_out.close()
+            result_q.task_done()
+
         wq = queue.Queue()
         results_worker = threading.Thread(target=write_worker, args=(wq, os.path.join(self.output, outputfile)))
         results_worker.daemon = True
@@ -1123,7 +1227,7 @@ def main():
 
     parser.add_argument('snapshot', type=argparse.FileType('rb'), help="Path to the snapshot .dat file.")
     parser.add_argument('-o', '--output', required=False, type=pathlib.Path, help="Path to the *.json output folder. Folder will be created if it doesn't exist. Defaults to the current directory.", default=".")
-    parser.add_argument('-m', '--mode', required=False, help="The output mode to use. Besides BloodHound JSON output files, it is possible to dump all objects with all attributes to NDJSON. Defaults to BloodHound output mode.", choices=ADExplorerSnapshot.OutputMode.__members__, default='BloodHound')
+    parser.add_argument('-m', '--mode', required=False, help="The output mode to use. Besides BloodHound JSON output files, it is possible to dump all objects with all attributes to NDJSON or LDIF formats. Defaults to BloodHound output mode.", choices=ADExplorerSnapshot.OutputMode.__members__, default='BloodHound')
 
     args = parser.parse_args()
 
@@ -1155,6 +1259,8 @@ def main():
         ades.outputBloodHound()
     if outputmode == ADExplorerSnapshot.OutputMode.Objects:
         ades.outputObjects()
+    if outputmode == ADExplorerSnapshot.OutputMode.LDIF:
+        ades.outputLDIF()
 
 if __name__ == '__main__':
     main()
